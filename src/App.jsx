@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import FilterBar from "./components/FilterBar";
+import FileUpload from "./components/FileUpload";
 
 const API = `${import.meta.env.VITE_API_URL}/api`;
 console.log("API URL:", API);
@@ -23,6 +24,10 @@ export default function App() {
   const [isbn, setIsbn] = useState("");
   const [title, setTitle] = useState("");
   const [copies, setCopies] = useState(1);
+
+  // File Upload States
+  const [coverUrl, setCoverUrl] = useState("");
+  const [ebookKey, setEbookKey] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -123,15 +128,22 @@ export default function App() {
       },
       body: JSON.stringify({
         title,
-        authors: authors.split(",").map(a => a.trim()),
-        subjects: subjects.split(",").map(s => s.trim()),
+        authors: authors.split(",").map(a => a.trim()).filter(Boolean),
+        subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
         isbn,
         copiesTotal: Number(copies),
+        coverUrl,
+        ebookKey
       }),
     });
 
     setTitle("");
+    setAuthors("");
+    setSubjects("");
+    setIsbn("");
     setCopies(1);
+    setCoverUrl("");
+    setEbookKey("");
     fetchBooks();
     alert("Book added!");
   }
@@ -264,6 +276,30 @@ export default function App() {
               onChange={(e) => setCopies(e.target.value)}
               min="1"
               style={styles.input}
+            />
+
+            <FileUpload
+              label="Cover Image"
+              accept="image/*"
+              uploadType="Cover Image"
+              apiBaseUrl={API}
+              token={localStorage.getItem("token")}
+              onUploadComplete={(url) => setCoverUrl(url)}
+            />
+
+            <FileUpload
+              label="PDF / eBook"
+              accept="application/pdf"
+              uploadType="PDF Document"
+              apiBaseUrl={API}
+              token={localStorage.getItem("token")}
+              onUploadComplete={(url) => {
+                // S3 Signed URL returns the full URL, but GET download-url demands a precise Object Key.
+                // We'll store the full URL anyways (or extract the filename depending on backend rules later).
+                // Our backend actually uses random key IDs so returning the object key or full path varies, 
+                // but we will pass the exact string the API payload expects.
+                setEbookKey(url.split('/').pop()); // The backend `GET /api/download-url?key=` expects just the key.
+              }}
             />
 
             <button style={styles.button}>Add Book</button>
