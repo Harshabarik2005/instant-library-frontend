@@ -190,145 +190,187 @@ export default function App() {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
-  // LOGIN PAGE
+  // LOGIN PAGE  — matches reference design
   // ────────────────────────────────────────────────────────────────────────────
   if (!user) {
     return (
       <>
         <ToastContainer toasts={toasts} />
 
-        <div className="split-login" style={{
-          display: "flex", minHeight: "100vh", overflow: "hidden"
-        }}>
-          {/* ── LEFT HERO ── */}
-          <div className="login-hero" style={{
-            flex: 1, position: "relative",
-            background: "linear-gradient(150deg, #060d1a 0%, #0d1f3c 50%, #0b1220 100%)",
-            display: "flex", flexDirection: "column", justifyContent: "center",
-            padding: "60px 64px", overflow: "hidden"
+        <div style={{ display: "flex", minHeight: "100vh", overflow: "hidden" }}>
+
+          {/* ── LEFT HERO PANEL (dark navy) ── */}
+          <div style={{
+            flex: 1,
+            position: "relative",
+            background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 60%, #0b1220 100%)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: "36px 52px 40px",
+            overflow: "hidden",
+            minWidth: 0,
           }}>
-            {/* Ambient circles */}
+            {/* Subtle grid-dot overlay */}
             <div style={{
-              position: "absolute", top: -120, left: -120,
-              width: 500, height: 500, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)",
-              pointerEvents: "none"
-            }} />
-            <div style={{
-              position: "absolute", bottom: -80, right: -80,
-              width: 400, height: 400, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)",
-              pointerEvents: "none"
+              position: "absolute", inset: 0, opacity: 0.04,
+              backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+              backgroundSize: "28px 28px", pointerEvents: "none"
             }} />
 
-            {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 48 }}>
+            {/* Logo row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 12,
+                width: 36, height: 36, borderRadius: 9,
                 background: "linear-gradient(135deg, #f59e0b, #d97706)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 22, boxShadow: "0 4px 16px rgba(245,158,11,0.35)"
+                fontSize: 18, boxShadow: "0 2px 12px rgba(245,158,11,0.4)"
               }}>📚</div>
-              <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.3px" }}>Instant Library</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: "-0.2px" }}>
+                Instant Library
+              </span>
             </div>
 
-            {/* Hero Text */}
-            <h1 style={{
-              fontSize: "clamp(36px, 4vw, 54px)",
-              fontWeight: 900,
-              lineHeight: 1.1,
-              letterSpacing: "-1.5px",
-              marginBottom: 16
-            }}>
-              Search. Borrow.<br />Learn.
-            </h1>
-            <p style={{
-              fontSize: "clamp(20px, 2.5vw, 28px)",
-              fontWeight: 700,
-              color: "#f59e0b",
-              marginBottom: 20,
-              letterSpacing: "-0.5px"
-            }}>
-              Smarter Library Access.
-            </p>
-            <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.7, maxWidth: 400, marginBottom: 48 }}>
-              Discover books, manage requests, and access digital resources anytime, anywhere.
-            </p>
+            {/* Hero copy */}
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <h1 style={{
+                fontSize: "clamp(34px, 3.8vw, 52px)",
+                fontWeight: 900,
+                lineHeight: 1.1,
+                letterSpacing: "-1.5px",
+                color: "#fff",
+                marginBottom: 10,
+              }}>
+                Search. Borrow.
+              </h1>
+              <h1 style={{
+                fontSize: "clamp(34px, 3.8vw, 52px)",
+                fontWeight: 900,
+                lineHeight: 1.1,
+                letterSpacing: "-1.5px",
+                color: "#f59e0b",
+                marginBottom: 22,
+              }}>
+                Get Access.
+              </h1>
+              <p style={{ fontSize: 15, color: "#8fa3bf", lineHeight: 1.7, maxWidth: 380, marginBottom: 40 }}>
+                Discover books, manage requests, and access digital resources anytime, anywhere.
+              </p>
 
-            {/* Stats */}
-            <div style={{ display: "flex", gap: 32 }}>
-              {[
-                { value: "10,000+", label: "Books" },
-                { value: "95%", label: "Availability" }
-              ].map(s => (
-                <div key={s.label} style={{
-                  padding: "16px 24px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 12
-                }}>
-                  <p style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>{s.value}</p>
-                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{s.label}</p>
-                </div>
-              ))}
+              {/* Stats */}
+              <div style={{ display: "flex", gap: 40 }}>
+                {[
+                  { value: "10,000+", label: "BOOKS AVAILABLE" },
+                  { value: "95%", label: "AVAILABILITY RATE" },
+                ].map(s => (
+                  <div key={s.label}>
+                    <p style={{ fontSize: 24, fontWeight: 800, color: "#fff" }}>{s.value}</p>
+                    <p style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700, letterSpacing: "0.8px", marginTop: 2 }}>
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Footer */}
+            <p style={{ fontSize: 12, color: "#3d5168", position: "relative" }}>
+              Powered by Greenfield University
+            </p>
           </div>
 
-          {/* ── RIGHT LOGIN CARD ── */}
+          {/* ── RIGHT PANEL (white) ── */}
           <div style={{
-            width: "min(480px, 100%)",
-            background: "rgba(10, 17, 32, 0.95)",
-            borderLeft: "1px solid rgba(255,255,255,0.06)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "40px 32px"
+            width: "min(520px, 100%)",
+            background: "#f0f4f8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "40px 32px",
           }}>
-            <div style={{ width: "100%", maxWidth: 380 }}>
-              <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6, letterSpacing: "-0.5px" }}>
+            {/* Card */}
+            <div style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "#fff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "36px 32px",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+            }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.4px" }}>
                 Sign in
               </h2>
-              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 32 }}>
+              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>
                 Enter your credentials to continue
               </p>
 
               <form onSubmit={login} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
                 {/* Email */}
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
-                    Email address
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    Email
                   </label>
                   <div style={{ position: "relative" }}>
                     <span style={{
-                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-                      fontSize: 15, opacity: 0.4
+                      position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                      color: "#94a3b8", fontSize: 14, userSelect: "none"
                     }}>✉</span>
                     <input
-                      className="input-field"
                       type="email"
                       placeholder="you@greenfield.edu"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       required
+                      style={{
+                        width: "100%",
+                        padding: "11px 14px 11px 36px",
+                        background: "#f1f5f9",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 8,
+                        fontSize: 14,
+                        color: "#0f172a",
+                        fontFamily: "Inter, sans-serif",
+                        outline: "none",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={e => { e.target.style.borderColor = "#f59e0b"; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.15)"; }}
+                      onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
                     />
                   </div>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                     Password
                   </label>
                   <div style={{ position: "relative" }}>
                     <span style={{
-                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-                      fontSize: 15, opacity: 0.4
+                      position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                      color: "#94a3b8", fontSize: 14, userSelect: "none"
                     }}>🔒</span>
                     <input
-                      className="input-field"
                       type="password"
                       placeholder="••••••••"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
+                      style={{
+                        width: "100%",
+                        padding: "11px 14px 11px 36px",
+                        background: "#f1f5f9",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 8,
+                        fontSize: 14,
+                        color: "#0f172a",
+                        fontFamily: "Inter, sans-serif",
+                        outline: "none",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={e => { e.target.style.borderColor = "#f59e0b"; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.15)"; }}
+                      onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
                     />
                   </div>
                 </div>
@@ -336,33 +378,51 @@ export default function App() {
                 {/* Error */}
                 {error && (
                   <div style={{
-                    padding: "10px 14px",
-                    background: "rgba(239,68,68,0.1)",
-                    border: "1px solid rgba(239,68,68,0.25)",
-                    borderRadius: 10,
-                    color: "#f87171",
+                    padding: "9px 12px",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: 8,
+                    color: "#dc2626",
                     fontSize: 13,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8
                   }}>
                     ⚠ {error}
                   </div>
                 )}
 
-                {/* Submit */}
+                {/* Sign In Button — dark navy matching reference */}
                 <button
-                  className="btn-amber"
+                  type="submit"
                   disabled={authLoading}
-                  style={{ width: "100%", marginTop: 8, padding: "13px" }}
+                  style={{
+                    width: "100%",
+                    padding: "13px",
+                    marginTop: 6,
+                    background: authLoading ? "#334155" : "#0f172a",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "Inter, sans-serif",
+                    cursor: authLoading ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={e => { if (!authLoading) e.currentTarget.style.background = "#1e293b"; }}
+                  onMouseLeave={e => { if (!authLoading) e.currentTarget.style.background = "#0f172a"; }}
                 >
-                  {authLoading ? <Spinner size={18} /> : <>Sign In <span>→</span></>}
+                  {authLoading ? <Spinner size={18} /> : <>Sign In →</>}
                 </button>
               </form>
 
-              <p style={{ marginTop: 28, textAlign: "center", fontSize: 13, color: "#4b5563" }}>
+              <p style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#94a3b8" }}>
                 Don't have an account?{" "}
-                <span style={{ color: "#f59e0b", cursor: "pointer" }}>Contact your admin</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, cursor: "pointer" }}>
+                  Contact your admin
+                </span>
               </p>
             </div>
           </div>
@@ -370,6 +430,7 @@ export default function App() {
       </>
     );
   }
+
 
   // ────────────────────────────────────────────────────────────────────────────
   // DASHBOARD
