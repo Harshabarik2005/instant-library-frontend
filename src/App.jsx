@@ -1,493 +1,607 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FilterBar from "./components/FilterBar";
 import FileUpload from "./components/FileUpload";
 
 const API = `${import.meta.env.VITE_API_URL}/api`;
 
+// ─── Toast Hook ─────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((msg, type = "info") => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
+  }, []);
+  return { toasts, addToast };
+}
+
+// ─── Toast UI ────────────────────────────────────────────────────────────────
+function ToastContainer({ toasts }) {
+  const icons = { success: "✓", error: "✕", info: "◆" };
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.type}`}>
+          <span style={{ fontWeight: 700 }}>{icons[t.type]}</span>
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Spinner ─────────────────────────────────────────────────────────────────
+function Spinner({ size = 20 }) {
+  return <div className="spinner" style={{ width: size, height: size }} />;
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
+  /* Auth */
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState(null);
-  const [books, setBooks] = useState([]);
-  const [filters, setFilters] = useState({ search: "", author: "", subject: "", available: false });
-  const [isLoading, setIsLoading] = useState(false);
-  const [requests, setRequests] = useState([]);
+  const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState("");
+
+  /* Books */
+  const [books, setBooks] = useState([]);
+  const [booksLoading, setBooksLoading] = useState(false);
+  const [filters, setFilters] = useState({ search: "", author: "", subject: "", available: false });
+
+  /* Requests */
+  const [requests, setRequests] = useState([]);
+
+  /* Admin – Add Book */
+  const [title, setTitle] = useState("");
   const [authors, setAuthors] = useState("");
   const [subjects, setSubjects] = useState("");
   const [isbn, setIsbn] = useState("");
-  const [title, setTitle] = useState("");
   const [copies, setCopies] = useState(1);
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [addingBook, setAddingBook] = useState(false);
+
+  /* UI */
+  const { toasts, addToast } = useToast();
 
   useEffect(() => {
     if (user) { fetchBooks(); fetchRequests(); }
   }, [user]);
 
+  // ── Auth ────────────────────────────────────────────────────────────────────
   async function login(e) {
     e.preventDefault();
     setError("");
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) return setError(data.error);
-    localStorage.setItem("token", data.token);
-    setUser(data.user);
+    setAuthLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Invalid credentials"); return; }
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      addToast(`Welcome back, ${data.user.name}!`, "success");
+    } catch {
+      setError("Could not reach the server. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   }
 
+  function logout() {
+    localStorage.removeItem("token");
+    setUser(null); setBooks([]); setRequests([]);
+    addToast("You have been logged out.", "info");
+  }
+
+  // ── Data ─────────────────────────────────────────────────────────────────────
   async function fetchBooks() {
-    setIsLoading(true);
+    setBooksLoading(true);
     try {
-      const queryParams = new URLSearchParams();
-      if (filters.search) queryParams.append("search", filters.search);
-      if (filters.author) queryParams.append("author", filters.author);
-      if (filters.subject) queryParams.append("subject", filters.subject);
-      if (filters.available) queryParams.append("available", "true");
-      const res = await fetch(`${API}/books?${queryParams.toString()}`);
+      const q = new URLSearchParams();
+      if (filters.search) q.append("search", filters.search);
+      if (filters.author) q.append("author", filters.author);
+      if (filters.subject) q.append("subject", filters.subject);
+      if (filters.available) q.append("available", "true");
+      const res = await fetch(`${API}/books?${q}`);
       const data = await res.json();
       setBooks(data.books || []);
-    } catch (err) {
-      console.error("Error fetching books:", err);
+    } catch {
+      addToast("Failed to fetch books.", "error");
     } finally {
-      setIsLoading(false);
+      setBooksLoading(false);
     }
   }
 
   async function fetchRequests() {
     const token = localStorage.getItem("token");
     const url = user?.role === "admin" ? `${API}/admin/requests` : `${API}/requests`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    setRequests(data.requests);
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setRequests(data.requests || []);
+    } catch {
+      addToast("Failed to load requests.", "error");
+    }
   }
 
   async function requestBook(bookId) {
     const token = localStorage.getItem("token");
-    await fetch(`${API}/requests/${bookId}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    fetchRequests();
+    try {
+      await fetch(`${API}/requests/${bookId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      addToast("Book requested successfully!", "success");
+      fetchRequests();
+    } catch {
+      addToast("Failed to submit request.", "error");
+    }
   }
 
   async function approveRequest(id) {
     const token = localStorage.getItem("token");
-    await fetch(`${API}/admin/requests/${id}`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "approved" }),
-    });
-    fetchRequests();
+    try {
+      await fetch(`${API}/admin/requests/${id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      });
+      addToast("Request approved.", "success");
+      fetchRequests();
+    } catch {
+      addToast("Failed to approve request.", "error");
+    }
   }
 
   async function addBook(e) {
     e.preventDefault();
+    setAddingBook(true);
     const token = localStorage.getItem("token");
-    await fetch(`${API}/admin/books`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        authors: authors.split(",").map(a => a.trim()).filter(Boolean),
-        subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
-        isbn,
-        copiesTotal: Number(copies),
-        coverUrl: coverImageUrl,
-        ebookKey: pdfUrl
-      }),
-    });
-    setTitle(""); setAuthors(""); setSubjects(""); setIsbn(""); setCopies(1);
-    setCoverImageUrl(""); setPdfUrl("");
-    fetchBooks();
-    alert("Book added successfully!");
+    try {
+      await fetch(`${API}/admin/books`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          authors: authors.split(",").map(a => a.trim()).filter(Boolean),
+          subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
+          isbn,
+          copiesTotal: Number(copies),
+          coverUrl: coverImageUrl,
+          ebookKey: pdfUrl,
+        }),
+      });
+      setTitle(""); setAuthors(""); setSubjects(""); setIsbn(""); setCopies(1);
+      setCoverImageUrl(""); setPdfUrl("");
+      addToast(`"${title}" added to the library!`, "success");
+      fetchBooks();
+    } catch {
+      addToast("Failed to add book.", "error");
+    } finally {
+      setAddingBook(false);
+    }
   }
 
-  function logout() {
-    localStorage.removeItem("token");
-    setUser(null); setBooks([]); setRequests([]);
-  }
-
-  // ─── LOGIN ───────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // LOGIN PAGE
+  // ────────────────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px"
-      }}>
-        <div className="glass" style={{
-          width: "100%",
-          maxWidth: "420px",
-          padding: "48px 40px",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.5)"
+      <>
+        <ToastContainer toasts={toasts} />
+
+        <div className="split-login" style={{
+          display: "flex", minHeight: "100vh", overflow: "hidden"
         }}>
-          {/* Logo + Title */}
-          <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          {/* ── LEFT HERO ── */}
+          <div className="login-hero" style={{
+            flex: 1, position: "relative",
+            background: "linear-gradient(150deg, #060d1a 0%, #0d1f3c 50%, #0b1220 100%)",
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            padding: "60px 64px", overflow: "hidden"
+          }}>
+            {/* Ambient circles */}
             <div style={{
-              width: 64, height: 64, borderRadius: "16px",
-              background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "28px", margin: "0 auto 16px"
-            }}>📚</div>
-            <h1 style={{ fontSize: "24px", fontWeight: 800, letterSpacing: "-0.5px" }}>
-              Instant Library
+              position: "absolute", top: -120, left: -120,
+              width: 500, height: 500, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)",
+              pointerEvents: "none"
+            }} />
+            <div style={{
+              position: "absolute", bottom: -80, right: -80,
+              width: 400, height: 400, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)",
+              pointerEvents: "none"
+            }} />
+
+            {/* Logo */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 48 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 22, boxShadow: "0 4px 16px rgba(245,158,11,0.35)"
+              }}>📚</div>
+              <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.3px" }}>Instant Library</span>
+            </div>
+
+            {/* Hero Text */}
+            <h1 style={{
+              fontSize: "clamp(36px, 4vw, 54px)",
+              fontWeight: 900,
+              lineHeight: 1.1,
+              letterSpacing: "-1.5px",
+              marginBottom: 16
+            }}>
+              Search. Borrow.<br />Learn.
             </h1>
-            <p style={{ color: "var(--muted)", fontSize: "14px", marginTop: "6px" }}>
-              Greenfield University
+            <p style={{
+              fontSize: "clamp(20px, 2.5vw, 28px)",
+              fontWeight: 700,
+              color: "#f59e0b",
+              marginBottom: 20,
+              letterSpacing: "-0.5px"
+            }}>
+              Smarter Library Access.
             </p>
+            <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.7, maxWidth: 400, marginBottom: 48 }}>
+              Discover books, manage requests, and access digital resources anytime, anywhere.
+            </p>
+
+            {/* Stats */}
+            <div style={{ display: "flex", gap: 32 }}>
+              {[
+                { value: "10,000+", label: "Books" },
+                { value: "95%", label: "Availability" }
+              ].map(s => (
+                <div key={s.label} style={{
+                  padding: "16px 24px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 12
+                }}>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>{s.value}</p>
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <form onSubmit={login} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--muted)", marginBottom: "6px" }}>
-                Email address
-              </label>
-              <input
-                className="input-dark"
-                type="email"
-                placeholder="you@greenfield.edu"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--muted)", marginBottom: "6px" }}>
-                Password
-              </label>
-              <input
-                className="input-dark"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
-            </div>
+          {/* ── RIGHT LOGIN CARD ── */}
+          <div style={{
+            width: "min(480px, 100%)",
+            background: "rgba(10, 17, 32, 0.95)",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "40px 32px"
+          }}>
+            <div style={{ width: "100%", maxWidth: 380 }}>
+              <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6, letterSpacing: "-0.5px" }}>
+                Sign in
+              </h2>
+              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 32 }}>
+                Enter your credentials to continue
+              </p>
 
-            {error && (
-              <div style={{
-                padding: "10px 14px",
-                background: "rgba(239,68,68,0.12)",
-                border: "1px solid rgba(239,68,68,0.3)",
-                borderRadius: "10px",
-                color: "#f87171",
-                fontSize: "13px"
-              }}>
-                ⚠️ {error}
-              </div>
-            )}
+              <form onSubmit={login} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {/* Email */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                    Email address
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{
+                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                      fontSize: 15, opacity: 0.4
+                    }}>✉</span>
+                    <input
+                      className="input-field"
+                      type="email"
+                      placeholder="you@greenfield.edu"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
 
-            <button className="btn-primary" style={{ marginTop: "8px", width: "100%", padding: "12px" }}>
-              Sign In
-            </button>
-          </form>
+                {/* Password */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                    Password
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{
+                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                      fontSize: 15, opacity: 0.4
+                    }}>🔒</span>
+                    <input
+                      className="input-field"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Error */}
+                {error && (
+                  <div style={{
+                    padding: "10px 14px",
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.25)",
+                    borderRadius: 10,
+                    color: "#f87171",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
+                  }}>
+                    ⚠ {error}
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  className="btn-amber"
+                  disabled={authLoading}
+                  style={{ width: "100%", marginTop: 8, padding: "13px" }}
+                >
+                  {authLoading ? <Spinner size={18} /> : <>Sign In <span>→</span></>}
+                </button>
+              </form>
+
+              <p style={{ marginTop: 28, textAlign: "center", fontSize: 13, color: "#4b5563" }}>
+                Don't have an account?{" "}
+                <span style={{ color: "#f59e0b", cursor: "pointer" }}>Contact your admin</span>
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // ─── DASHBOARD ───────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // DASHBOARD
+  // ────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh" }}>
-      {/* ── Navbar ── */}
+    <>
+      <ToastContainer toasts={toasts} />
+
+      {/* ── Sticky Navbar ── */}
       <header style={{
-        background: "rgba(0,0,0,0.3)",
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(6,13,26,0.85)",
         backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
         padding: "0 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        height: "64px",
-        position: "sticky",
-        top: 0,
-        zIndex: 100
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: 64
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "22px" }}>📚</span>
-          <span style={{ fontWeight: 700, fontSize: "17px", letterSpacing: "-0.3px" }}>Instant Library</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            padding: "6px 14px",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "99px"
+            width: 34, height: 34, borderRadius: 9,
+            background: "linear-gradient(135deg, #f59e0b, #d97706)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, boxShadow: "0 2px 10px rgba(245,158,11,0.3)"
+          }}>📚</div>
+          <span style={{ fontWeight: 700, fontSize: 16 }}>Instant Library</span>
+        </div>
+
+        {/* Right side */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Avatar pill */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "5px 14px 5px 6px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 99
           }}>
             <div style={{
-              width: 28, height: 28,
-              background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-              borderRadius: "50%",
+              width: 28, height: 28, borderRadius: "50%",
+              background: "linear-gradient(135deg, #f59e0b, #d97706)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "12px", fontWeight: 700
+              fontWeight: 800, fontSize: 12, color: "#0b1220"
             }}>
               {user.name?.charAt(0).toUpperCase()}
             </div>
-            <span style={{ fontSize: "13px", fontWeight: 500 }}>{user.name}</span>
-            <span style={{
-              fontSize: "11px",
-              padding: "2px 8px",
-              borderRadius: "99px",
-              background: user.role === "admin" ? "rgba(124,58,237,0.2)" : "rgba(16,185,129,0.15)",
-              color: user.role === "admin" ? "#a78bfa" : "#34d399",
-              fontWeight: 600,
-              textTransform: "capitalize"
-            }}>{user.role}</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{user.name}</span>
+            <span className="badge badge-role" style={{ textTransform: "capitalize" }}>{user.role}</span>
           </div>
-          <button className="btn-secondary" onClick={logout} style={{ padding: "7px 18px" }}>
+
+          <button className="btn-ghost" onClick={logout}>
             Logout
           </button>
         </div>
       </header>
 
-      <main style={{ padding: "32px", maxWidth: "1280px", margin: "0 auto" }}>
-        {/* ── STUDENT VIEW ── */}
+      {/* ── Page Body ── */}
+      <main style={{ maxWidth: 1300, margin: "0 auto", padding: "36px 32px" }}>
+
+        {/* ═══ STUDENT VIEW ═══════════════════════════════════════════════════ */}
         {user.role === "student" && (
           <>
-            <div style={{ marginBottom: "28px" }}>
-              <h2 style={{ fontSize: "26px", fontWeight: 800, letterSpacing: "-0.5px" }}>
-                📖 Available Books
+            {/* Page header */}
+            <div style={{ marginBottom: 28 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px" }}>
+                Available Books
               </h2>
-              <p style={{ color: "var(--muted)", fontSize: "14px", marginTop: "4px" }}>
-                Browse and request books from our library
+              <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
+                Browse, filter and request books from the library
               </p>
             </div>
 
-            <FilterBar filters={filters} setFilters={setFilters} onSearch={fetchBooks} isLoading={isLoading} />
+            {/* Filter bar */}
+            <FilterBar
+              filters={filters} setFilters={setFilters}
+              onSearch={fetchBooks} isLoading={booksLoading}
+            />
 
-            {isLoading ? (
-              <div style={{ textAlign: "center", padding: "60px", color: "var(--muted)" }}>
-                <div style={{ fontSize: "32px", marginBottom: "12px", animation: "spin 1s linear infinite" }}>⏳</div>
-                <p>Loading books...</p>
+            {/* Books grid */}
+            {booksLoading ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
+                <div style={{ textAlign: "center", color: "#64748b" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                    <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
+                  </div>
+                  <p style={{ fontSize: 14 }}>Loading books...</p>
+                </div>
               </div>
             ) : books.length === 0 ? (
-              <div style={{
-                textAlign: "center", padding: "60px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px dashed rgba(255,255,255,0.1)",
-                borderRadius: "16px", color: "var(--muted)"
-              }}>
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>📭</div>
-                <p>No books found matching your filters.</p>
+              <div className="empty-state">
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
+                <p style={{ fontSize: 16, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>No books found</p>
+                <p style={{ fontSize: 13 }}>Try adjusting your search filters</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
                 {books.map(book => (
-                  <div key={book.id} className="book-card">
-                    {/* Cover Image */}
-                    <div style={{
-                      width: "100%", height: "200px", overflow: "hidden",
-                      background: book.coverUrl ? "transparent" : "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,70,229,0.2))",
-                      display: "flex", alignItems: "center", justifyContent: "center"
-                    }}>
-                      {book.coverUrl
-                        ? <img src={book.coverUrl} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <span style={{ fontSize: "48px", opacity: 0.5 }}>📕</span>
-                      }
-                    </div>
-
-                    <div style={{ padding: "16px" }}>
-                      <h4 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "10px", lineHeight: 1.3 }}>
-                        {book.title}
-                      </h4>
-                      <p style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "4px" }}>
-                        <b style={{ color: "#c4b5fd" }}>Author:</b> {book.authors?.join(", ")}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "4px" }}>
-                        <b style={{ color: "#c4b5fd" }}>Subject:</b> {book.subjects?.join(", ")}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "4px" }}>
-                        <b style={{ color: "#c4b5fd" }}>ISBN:</b> {book.isbn || "N/A"}
-                      </p>
-                      <div style={{
-                        display: "inline-flex", alignItems: "center", gap: "5px",
-                        padding: "3px 10px", borderRadius: "99px", marginBottom: "14px",
-                        fontSize: "12px", fontWeight: 600,
-                        background: book.copiesAvailable > 0 ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
-                        color: book.copiesAvailable > 0 ? "#34d399" : "#f87171",
-                        border: `1px solid ${book.copiesAvailable > 0 ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`
-                      }}>
-                        {book.copiesAvailable > 0 ? `✓ ${book.copiesAvailable} available` : "✗ Unavailable"}
-                      </div>
-
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button
-                          className="btn-primary"
-                          onClick={() => requestBook(book.id)}
-                          disabled={book.copiesAvailable === 0}
-                          style={{ flex: 1, padding: "8px 12px", fontSize: "12px" }}
-                        >
-                          Request
-                        </button>
-                        {book.ebookKey && (
-                          <a
-                            href={book.ebookKey}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-blue"
-                            style={{ flex: 1, padding: "8px 12px", fontSize: "12px" }}
-                          >
-                            📄 PDF
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    onRequest={requestBook}
+                  />
                 ))}
               </div>
             )}
 
             {/* My Requests */}
-            <div style={{ marginTop: "48px" }}>
-              <h2 style={{ fontSize: "22px", fontWeight: 800, marginBottom: "16px" }}>
-                📌 My Requests
-              </h2>
+            <section style={{ marginTop: 56 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 20 }}>My Requests</h2>
               {requests.length === 0 ? (
-                <p style={{ color: "var(--muted)", fontSize: "14px" }}>No requests yet.</p>
+                <p style={{ color: "#4b5563", fontSize: 14 }}>You haven't requested any books yet.</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {requests.map(r => (
                     <div key={r.id} className="glass" style={{
                       padding: "14px 20px",
-                      display: "flex", alignItems: "center", justifyContent: "space-between"
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: 16
                     }}>
                       <div>
-                        <p style={{ fontSize: "13px", color: "var(--muted)" }}>Book ID</p>
-                        <p style={{ fontSize: "14px", fontWeight: 600, fontFamily: "monospace" }}>{r.bookId}</p>
+                        <p style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>Book ID</p>
+                        <p style={{ fontSize: 13, fontFamily: "monospace", color: "#cbd5e1" }}>{r.bookId}</p>
                       </div>
-                      <span className={r.status === "approved" ? "badge-approved" : "badge-pending"}>
-                        {r.status === "approved" ? "✓" : "⏳"} {r.status}
+                      <span className={`badge badge-${r.status}`}>
+                        {r.status === "approved" ? "✓" : r.status === "rejected" ? "✕" : "⏳"} {r.status}
                       </span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           </>
         )}
 
-        {/* ── ADMIN VIEW ── */}
+        {/* ═══ ADMIN VIEW ════════════════════════════════════════════════════ */}
         {user.role === "admin" && (
           <>
-            <div style={{ marginBottom: "32px" }}>
-              <h2 style={{ fontSize: "26px", fontWeight: 800, letterSpacing: "-0.5px" }}>
-                🛠 Admin Panel
-              </h2>
-              <p style={{ color: "var(--muted)", fontSize: "14px", marginTop: "4px" }}>
-                Manage books and approve student requests
+            {/* Page header */}
+            <div style={{ marginBottom: 32 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px" }}>Admin Panel</h2>
+              <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
+                Manage the library catalogue and approve student requests
               </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+
               {/* Add Book Form */}
-              <div className="glass" style={{ padding: "28px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px" }}>
+              <div className="glass" style={{ padding: 28 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>
                   ➕ Add New Book
                 </h3>
-                <form onSubmit={addBook} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <form onSubmit={addBook} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {[
-                    { placeholder: "Book title", value: title, setter: setTitle, required: true },
+                    { placeholder: "Book title *", value: title, setter: setTitle, req: true },
                     { placeholder: "Authors (comma separated)", value: authors, setter: setAuthors },
                     { placeholder: "Subjects (comma separated)", value: subjects, setter: setSubjects },
                     { placeholder: "ISBN", value: isbn, setter: setIsbn },
                   ].map((f, i) => (
-                    <input
-                      key={i}
-                      className="input-dark"
-                      type="text"
-                      placeholder={f.placeholder}
-                      value={f.value}
-                      onChange={e => f.setter(e.target.value)}
-                      required={f.required}
-                    />
+                    <input key={i} className="input-simple" type="text"
+                      placeholder={f.placeholder} value={f.value}
+                      onChange={e => f.setter(e.target.value)} required={f.req} />
                   ))}
-                  <input
-                    className="input-dark"
-                    type="number"
-                    placeholder="Number of copies"
-                    value={copies}
-                    min="1"
-                    onChange={e => setCopies(e.target.value)}
-                  />
+
+                  <input className="input-simple" type="number"
+                    placeholder="Number of copies" value={copies} min="1"
+                    onChange={e => setCopies(e.target.value)} />
 
                   <FileUpload
-                    label="Cover Image"
-                    accept="image/*"
-                    uploadType="Cover Image"
-                    apiBaseUrl={API}
-                    token={localStorage.getItem("token")}
+                    label="Cover Image" accept="image/*"
+                    apiBaseUrl={API} token={localStorage.getItem("token")}
                     onUploadComplete={url => setCoverImageUrl(url)}
-                    onUploadStateChange={isUploading => setIsUploadingCover(isUploading)}
+                    onUploadStateChange={v => setIsUploadingCover(v)}
                   />
-
                   <FileUpload
-                    label="PDF / eBook"
-                    accept="application/pdf"
-                    uploadType="PDF Document"
-                    apiBaseUrl={API}
-                    token={localStorage.getItem("token")}
+                    label="PDF / eBook" accept="application/pdf"
+                    apiBaseUrl={API} token={localStorage.getItem("token")}
                     onUploadComplete={url => setPdfUrl(url)}
-                    onUploadStateChange={isUploading => setIsUploadingPdf(isUploading)}
+                    onUploadStateChange={v => setIsUploadingPdf(v)}
                   />
 
                   <button
-                    className="btn-primary"
-                    style={{ marginTop: "8px", padding: "12px" }}
-                    disabled={isUploadingCover || isUploadingPdf}
+                    className="btn-amber"
+                    style={{ width: "100%", marginTop: 8, padding: 13 }}
+                    disabled={isUploadingCover || isUploadingPdf || addingBook}
                   >
-                    {isUploadingCover || isUploadingPdf ? "Uploading files..." : "Add Book"}
+                    {addingBook ? <Spinner size={18} /> : (isUploadingCover || isUploadingPdf) ? "Uploading files…" : "Add Book"}
                   </button>
                 </form>
               </div>
 
-              {/* Book Requests */}
-              <div className="glass" style={{ padding: "28px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px" }}>
+              {/* Requests Panel */}
+              <div className="glass" style={{ padding: 28 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>
                   📋 Book Requests
                 </h3>
                 {requests.length === 0 ? (
-                  <p style={{ color: "var(--muted)", fontSize: "14px" }}>No pending requests.</p>
+                  <div className="empty-state" style={{ padding: "40px 20px" }}>
+                    <div style={{ fontSize: 30, marginBottom: 10 }}>🎉</div>
+                    <p style={{ color: "#64748b", fontSize: 13 }}>No pending requests</p>
+                  </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {requests.map(r => (
                       <div key={r.id} style={{
                         padding: "14px 16px",
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: "12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px"
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        borderRadius: 12,
+                        display: "flex", alignItems: "center",
+                        justifyContent: "space-between", gap: 12
                       }}>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: "11px", color: "var(--muted)", marginBottom: "2px" }}>Request</p>
-                          <p style={{ fontSize: "13px", fontWeight: 600, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "180px" }}>
-                            {r.id}
-                          </p>
-                          <p style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>
-                            Book: <span style={{ color: "var(--text)" }}>{r.bookId}</span>
+                          <p style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>Request</p>
+                          <p style={{
+                            fontSize: 12, fontFamily: "monospace", color: "#94a3b8",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180
+                          }}>{r.id}</p>
+                          <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                            Book: <span style={{ color: "#e2e8f0" }}>{r.bookId}</span>
                           </p>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px", flexShrink: 0 }}>
-                          <span className={r.status === "approved" ? "badge-approved" : "badge-pending"}>
-                            {r.status === "approved" ? "✓" : "⏳"} {r.status}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+                          <span className={`badge badge-${r.status}`}>
+                            {r.status === "approved" ? "✓" : r.status === "rejected" ? "✕" : "⏳"} {r.status}
                           </span>
                           {r.status === "pending" && (
                             <button
-                              className="btn-primary"
+                              className="btn-outline-amber"
                               onClick={() => approveRequest(r.id)}
-                              style={{ padding: "5px 14px", fontSize: "12px" }}
+                              style={{ padding: "5px 14px", fontSize: 12 }}
                             >
                               Approve
                             </button>
@@ -502,6 +616,70 @@ export default function App() {
           </>
         )}
       </main>
+    </>
+  );
+}
+
+// ─── Book Card Component ─────────────────────────────────────────────────────
+function BookCard({ book, onRequest }) {
+  return (
+    <div className="book-card">
+      {/* Cover */}
+      <div style={{
+        height: 200, overflow: "hidden",
+        background: "linear-gradient(150deg, #0d1f3c, #0b1220)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        position: "relative"
+      }}>
+        {book.coverUrl ? (
+          <img src={book.coverUrl} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontSize: 52, opacity: 0.25 }}>📕</span>
+        )}
+        {/* Availability pill overlay */}
+        <div style={{ position: "absolute", top: 10, right: 10 }}>
+          <span className={`badge ${book.copiesAvailable > 0 ? "badge-avail" : "badge-unavail"}`}
+            style={{ fontSize: 10 }}>
+            {book.copiesAvailable > 0 ? `${book.copiesAvailable} left` : "Unavailable"}
+          </span>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: "14px 14px 16px" }}>
+        <h4 style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginBottom: 8 }}>{book.title}</h4>
+        <p style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>
+          <span style={{ color: "#f59e0b" }}>Author</span>  {book.authors?.join(", ") || "N/A"}
+        </p>
+        <p style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>
+          <span style={{ color: "#f59e0b" }}>Subject</span>  {book.subjects?.join(", ") || "N/A"}
+        </p>
+        <p style={{ fontSize: 11, color: "#64748b", marginBottom: 14 }}>
+          <span style={{ color: "#f59e0b" }}>ISBN</span>  {book.isbn || "N/A"}
+        </p>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn-amber"
+            onClick={() => onRequest(book.id)}
+            disabled={book.copiesAvailable === 0}
+            style={{ flex: 1, padding: "8px 10px", fontSize: 12 }}
+          >
+            Request
+          </button>
+          {book.ebookKey && (
+            <a
+              href={book.ebookKey}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-outline-amber"
+              style={{ flex: 1, padding: "8px 10px", fontSize: 12 }}
+            >
+              📄 PDF
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
