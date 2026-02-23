@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 
 // Reusable component to handle direct S3 file uploads via backend pre-signed URLs
-export default function FileUpload({ label, accept, onUploadComplete, uploadType, apiBaseUrl, token }) {
+export default function FileUpload({ label, accept, onUploadComplete, onUploadStateChange, apiBaseUrl, token }) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
@@ -10,7 +10,7 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
 
     const fileInputRef = useRef(null);
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -25,18 +25,18 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
         } else {
             setPreviewUrl('');
         }
+
+        // Trigger upload immediately after selection
+        await handleUpload(file);
     };
 
-    const handleUpload = async () => {
-        if (!selectedFile) {
-            setError('Please select a file first.');
-            return;
-        }
-
+    const handleUpload = async (fileToUpload) => {
         setIsUploading(true);
+        if (onUploadStateChange) onUploadStateChange(true);
         setError('');
 
         try {
+            // TODO: S3 upload
             // 1. 🔄 API Integration: Request signed upload URL from our backend
             const res = await fetch(`${apiBaseUrl}/upload-url`, {
                 method: 'POST',
@@ -45,8 +45,8 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    fileName: `${Date.now()}-${selectedFile.name}`,
-                    fileType: selectedFile.type,
+                    fileName: `${Date.now()}-${fileToUpload.name}`,
+                    fileType: fileToUpload.type,
                 }),
             });
 
@@ -61,7 +61,7 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
             await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('PUT', uploadUrl, true);
-                xhr.setRequestHeader('Content-Type', selectedFile.type);
+                xhr.setRequestHeader('Content-Type', fileToUpload.type);
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
@@ -80,7 +80,7 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
 
                 xhr.onerror = () => reject(new Error('Network error occurred during upload.'));
 
-                xhr.send(selectedFile);
+                xhr.send(fileToUpload);
             });
 
             // 3. ✅ Success: Notify parent component with the final S3 file URL
@@ -93,6 +93,7 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
             setUploadProgress(0);
         } finally {
             setIsUploading(false);
+            if (onUploadStateChange) onUploadStateChange(false);
         }
     };
 
@@ -140,16 +141,6 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
 
             {selectedFile && (
                 <div className="flex flex-col gap-2">
-                    {!isUploading && uploadProgress === 0 && (
-                        <button
-                            type="button"
-                            onClick={handleUpload}
-                            className="mt-2 py-1 px-3 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm w-32"
-                        >
-                            Upload {uploadType}
-                        </button>
-                    )}
-
                     {(isUploading || uploadProgress > 0) && (
                         <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                             <div
@@ -164,7 +155,7 @@ export default function FileUpload({ label, accept, onUploadComplete, uploadType
                     )}
 
                     {uploadProgress === 100 && !isUploading && (
-                        <p className="text-xs text-green-600 text-center font-bold">✓ Upload Complete</p>
+                        <p className="text-xs text-green-600 text-center font-bold">✓ {selectedFile.name} Uploaded</p>
                     )}
                 </div>
             )}

@@ -26,8 +26,10 @@ export default function App() {
   const [copies, setCopies] = useState(1);
 
   // File Upload States
-  const [coverUrl, setCoverUrl] = useState("");
-  const [ebookKey, setEbookKey] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -132,8 +134,9 @@ export default function App() {
         subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
         isbn,
         copiesTotal: Number(copies),
-        coverUrl,
-        ebookKey
+        // TODO: include URLs in book request
+        coverImageUrl,
+        pdfUrl
       }),
     });
 
@@ -142,8 +145,8 @@ export default function App() {
     setSubjects("");
     setIsbn("");
     setCopies(1);
-    setCoverUrl("");
-    setEbookKey("");
+    setCoverImageUrl("");
+    setPdfUrl("");
     fetchBooks();
     alert("Book added!");
   }
@@ -284,7 +287,8 @@ export default function App() {
               uploadType="Cover Image"
               apiBaseUrl={API}
               token={localStorage.getItem("token")}
-              onUploadComplete={(url) => setCoverUrl(url)}
+              onUploadComplete={(url) => setCoverImageUrl(url)}
+              onUploadStateChange={(isUploading) => setIsUploadingCover(isUploading)}
             />
 
             <FileUpload
@@ -293,16 +297,20 @@ export default function App() {
               uploadType="PDF Document"
               apiBaseUrl={API}
               token={localStorage.getItem("token")}
-              onUploadComplete={(url) => {
-                // S3 Signed URL returns the full URL, but GET download-url demands a precise Object Key.
-                // We'll store the full URL anyways (or extract the filename depending on backend rules later).
-                // Our backend actually uses random key IDs so returning the object key or full path varies, 
-                // but we will pass the exact string the API payload expects.
-                setEbookKey(url.split('/').pop()); // The backend `GET /api/download-url?key=` expects just the key.
-              }}
+              onUploadComplete={(url) => setPdfUrl(url)}
+              onUploadStateChange={(isUploading) => setIsUploadingPdf(isUploading)}
             />
 
-            <button style={styles.button}>Add Book</button>
+            <button
+              style={{
+                ...styles.button,
+                opacity: (isUploadingCover || isUploadingPdf) ? 0.5 : 1,
+                cursor: (isUploadingCover || isUploadingPdf) ? 'not-allowed' : 'pointer'
+              }}
+              disabled={isUploadingCover || isUploadingPdf}
+            >
+              Add Book
+            </button>
           </form>
 
 
