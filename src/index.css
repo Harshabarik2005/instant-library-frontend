@@ -1,1 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+:root {
+    --bg-from: #0f0c29;
+    --bg-mid: #302b63;
+    --bg-to: #24243e;
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --accent: #7c3aed;
+    --accent-light: #a78bfa;
+    --accent-hover: #6d28d9;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-mid) 50%, var(--bg-to) 100%);
+    min-height: 100vh;
+    color: var(--text);
+}
+
+/* Glassmorphism utility */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+}
+
+/* Input styles */
+.input-dark {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-dark::placeholder {
+    color: var(--muted);
+}
+
+.input-dark:focus {
+    border-color: var(--accent-light);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+}
+
+/* Button styles */
+.btn-primary {
+    padding: 10px 22px;
+    background: linear-gradient(135deg, var(--accent), #9f7aea);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.55);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    padding: 10px 22px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--muted);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text);
+}
+
+.btn-blue {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    display: inline-block;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.btn-blue:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+}
+
+.btn-danger {
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Book card */
+.book-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    overflow: hidden;
+    width: 220px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+
+.book-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Status badges */
+.badge-approved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
