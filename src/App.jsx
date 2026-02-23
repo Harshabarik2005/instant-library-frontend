@@ -206,17 +206,49 @@ export default function App() {
           <div style={styles.bookGrid}>
             {books.map((book) => (
               <div key={book.id} style={styles.card}>
-                <h4>{book.title}</h4>
-                <p><b>Author:</b> {book.authors?.join(", ")}</p>
-                <p><b>Subject:</b> {book.subjects?.join(", ")}</p>
-                <p><b>ISBN:</b> {book.isbn || "N/A"}</p>
-                <p><b>Available:</b> {book.copiesAvailable}</p>
-                <button
-                  onClick={() => requestBook(book.id)}
-                  disabled={book.copiesAvailable === 0}
-                >
-                  Request Book
-                </button>
+                {book.coverImageUrl && (
+                  <img
+                    src={book.coverImageUrl}
+                    alt={`${book.title} cover`}
+                    style={{ width: "100%", height: "200px", objectFit: "cover", borderRadius: "4px" }}
+                  />
+                )}
+                <h4 style={{ margin: "10px 0 5px 0" }}>{book.title}</h4>
+                <p style={{ margin: "5px 0" }}><b>Author:</b> {book.authors?.join(", ")}</p>
+                <p style={{ margin: "5px 0" }}><b>Subject:</b> {book.subjects?.join(", ")}</p>
+                <p style={{ margin: "5px 0" }}><b>ISBN:</b> {book.isbn || "N/A"}</p>
+                <p style={{ margin: "5px 0" }}><b>Available:</b> {book.copiesAvailable}</p>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "10px", alignItems: "center" }}>
+                  <button
+                    onClick={() => requestBook(book.id)}
+                    disabled={book.copiesAvailable === 0}
+                    style={{
+                      ...styles.button,
+                      flex: 1,
+                      opacity: book.copiesAvailable === 0 ? 0.5 : 1,
+                      cursor: book.copiesAvailable === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Request Book
+                  </button>
+                  {book.pdfUrl && (
+                    <a
+                      href={book.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        ...styles.button,
+                        background: "#2196F3",
+                        textDecoration: "none",
+                        textAlign: "center",
+                        flex: 1
+                      }}
+                    >
+                      View PDF
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
