@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import FilterBar from "./components/FilterBar";
 
 const API = `${import.meta.env.VITE_API_URL}/api`;
 console.log("API URL:", API);
@@ -8,7 +9,13 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState([]);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({
+    search: "",
+    author: "",
+    subject: "",
+    available: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [error, setError] = useState("");
   const [authors, setAuthors] = useState("");
@@ -42,9 +49,24 @@ export default function App() {
   }
 
   async function fetchBooks() {
-    const res = await fetch(`${API}/books`);
-    const data = await res.json();
-    setBooks(data.books);
+    setIsLoading(true);
+    try {
+      // Construct query parameters dynamically
+      const queryParams = new URLSearchParams();
+      if (filters.search) queryParams.append("search", filters.search);
+      if (filters.author) queryParams.append("author", filters.author);
+      if (filters.subject) queryParams.append("subject", filters.subject);
+      if (filters.available) queryParams.append("available", "true");
+
+      // API Integration to fetch filtered books
+      const res = await fetch(`${API}/books?${queryParams.toString()}`);
+      const data = await res.json();
+      setBooks(data.books || []);
+    } catch (err) {
+      console.error("Error fetching books:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function fetchRequests() {
@@ -160,38 +182,28 @@ export default function App() {
       {user.role === "student" && (
         <>
           <h3>📚 Available Books</h3>
-          <input
-            type="text"
-            placeholder="Search books..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              padding: 10,
-              marginBottom: 15,
-              width: 250,
-              display: "block"
-            }}
+          <FilterBar
+            filters={filters}
+            setFilters={setFilters}
+            onSearch={fetchBooks}
+            isLoading={isLoading}
           />
           <div style={styles.bookGrid}>
-            {books
-              .filter(book =>
-                book.title.toLowerCase().includes(search.toLowerCase())
-              )
-              .map((book) => (
-                <div key={book.id} style={styles.card}>
-                  <h4>{book.title}</h4>
-                  <p><b>Author:</b> {book.authors?.join(", ")}</p>
-                  <p><b>Subject:</b> {book.subjects?.join(", ")}</p>
-                  <p><b>ISBN:</b> {book.isbn || "N/A"}</p>
-                  <p><b>Available:</b> {book.copiesAvailable}</p>
-                  <button
-                    onClick={() => requestBook(book.id)}
-                    disabled={book.copiesAvailable === 0}
-                  >
-                    Request Book
-                  </button>
-                </div>
-              ))}
+            {books.map((book) => (
+              <div key={book.id} style={styles.card}>
+                <h4>{book.title}</h4>
+                <p><b>Author:</b> {book.authors?.join(", ")}</p>
+                <p><b>Subject:</b> {book.subjects?.join(", ")}</p>
+                <p><b>ISBN:</b> {book.isbn || "N/A"}</p>
+                <p><b>Available:</b> {book.copiesAvailable}</p>
+                <button
+                  onClick={() => requestBook(book.id)}
+                  disabled={book.copiesAvailable === 0}
+                >
+                  Request Book
+                </button>
+              </div>
+            ))}
           </div>
 
           <h3 style={{ marginTop: 30 }}>📌 My Requests</h3>
