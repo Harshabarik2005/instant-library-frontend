@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import FilterBar from "./components/FilterBar";
 import FileUpload from "./components/FileUpload";
+import BookCard from "./components/BookCard";
+import StatusBadge from "./components/StatusBadge";
+import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
+import FormInput from "./components/FormInput";
 
 const API = `${import.meta.env.VITE_API_URL}/api`;
 
@@ -14,36 +19,29 @@ function useToast() {
   }, []);
   return { toasts, addToast };
 }
+
 function ToastContainer({ toasts }) {
-  const icons = { success: "✓", error: "✕", info: "◆" };
+  const icons = { success: "✓", error: "✕", info: "ℹ" };
   return (
     <div className="toast-container">
-      {toasts.map(t => <div key={t.id} className={`toast ${t.type}`}><span style={{ fontWeight: 700 }}>{icons[t.type]}</span>{t.msg}</div>)}
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.type}`}>
+          <span className="font-bold">{icons[t.type]}</span>
+          {t.msg}
+        </div>
+      ))}
     </div>
   );
 }
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner({ size = 20 }) {
-  return <div className="spinner" style={{ width: size, height: size }} />;
+  return <div className="spinner flex-shrink-0" style={{ width: size, height: size }} />;
 }
 
-// ─── Light input style (used on login) ───────────────────────────────────────
-const lightInput = {
-  width: "100%",
-  padding: "10px 12px 10px 36px",
-  background: "#f1f5f9",
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
-  fontSize: 14,
-  color: "#0f172a",
-  fontFamily: "Inter, system-ui, sans-serif",
-  outline: "none",
-  boxSizing: "border-box",
-  transition: "border-color 0.2s, box-shadow 0.2s",
-};
-
-// ─── Main App ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════════════════════
 export default function App() {
   /* Auth */
   const [email, setEmail] = useState("");
@@ -72,6 +70,10 @@ export default function App() {
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [addingBook, setAddingBook] = useState(false);
 
+  /* UI */
+  const [activeView, setActiveView] = useState(user?.role === "admin" ? "manage" : "library");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const { toasts, addToast } = useToast();
 
   useEffect(() => { if (user) { fetchBooks(); fetchRequests(); } }, [user]);
@@ -88,6 +90,7 @@ export default function App() {
       if (!res.ok) { setError(data.error || "Invalid credentials"); return; }
       localStorage.setItem("token", data.token);
       setUser(data.user);
+      setActiveView(data.user.role === "admin" ? "manage" : "library");
       addToast(`Welcome back, ${data.user.name}!`, "success");
     } catch { setError("Could not reach the server."); }
     finally { setAuthLoading(false); }
@@ -155,7 +158,10 @@ export default function App() {
           title,
           authors: authors.split(",").map(a => a.trim()).filter(Boolean),
           subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
-          isbn, copiesTotal: Number(copies), coverUrl: coverImageUrl, ebookKey: pdfUrl,
+          isbn,
+          copiesTotal: Number(copies),
+          coverUrl: coverImageUrl,
+          ebookKey: pdfUrl,
         }),
       });
       const savedTitle = title;
@@ -167,144 +173,111 @@ export default function App() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN PAGE – reference design (dark left / white right)
+  // LOGIN PAGE
   // ═══════════════════════════════════════════════════════════════════════════
   if (!user) {
     return (
       <>
         <ToastContainer toasts={toasts} />
-        <div style={{ display: "flex", minHeight: "100vh", overflow: "hidden" }}>
+        <div className="flex min-h-screen overflow-hidden">
 
-          {/* LEFT HERO — dark navy */}
-          <div style={{
-            flex: 1, position: "relative",
-            background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 60%, #0b1220 100%)",
-            display: "flex", flexDirection: "column", justifyContent: "space-between",
-            padding: "36px 52px 40px", overflow: "hidden", minWidth: 0,
-          }}>
-            {/* dot grid overlay */}
-            <div style={{
-              position: "absolute", inset: 0, opacity: 0.04,
-              backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
-              backgroundSize: "28px 28px", pointerEvents: "none",
-            }} />
+          {/* LEFT BRAND PANEL */}
+          <div className="hidden md:flex flex-col flex-1 relative bg-zinc-900 p-12 overflow-hidden justify-between">
+            {/* Subtle dot pattern */}
+            <div className="absolute inset-0 opacity-[0.03]"
+              style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+            />
 
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 9,
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, boxShadow: "0 2px 12px rgba(245,158,11,0.4)",
-              }}>📚</div>
-              <span style={{ fontSize: 17, fontWeight: 700, color: "#fff" }}>Instant Library</span>
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-lg">
+                📚
+              </div>
+              <span className="text-lg font-bold text-white">Instant Library</span>
             </div>
 
-            {/* Hero copy */}
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <h1 style={{ fontSize: "clamp(32px,3.8vw,52px)", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#fff", marginBottom: 10 }}>
-                Search. Borrow.
+            {/* Hero text */}
+            <div className="relative z-10">
+              <h1 className="text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
+                Search.<br />Borrow.<br />
+                <span className="text-zinc-400">Get Access.</span>
               </h1>
-              <h1 style={{ fontSize: "clamp(32px,3.8vw,52px)", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#f59e0b", marginBottom: 22 }}>
-                Get Access.
-              </h1>
-              <p style={{ fontSize: 15, color: "#8fa3bf", lineHeight: 1.7, maxWidth: 380, marginBottom: 40 }}>
+              <p className="text-zinc-500 text-base leading-relaxed max-w-sm mb-10">
                 Discover books, manage requests, and access digital resources anytime, anywhere.
               </p>
-              <div style={{ display: "flex", gap: 40 }}>
+              <div className="flex gap-10">
                 {[{ value: "10,000+", label: "BOOKS AVAILABLE" }, { value: "95%", label: "AVAILABILITY RATE" }].map(s => (
                   <div key={s.label}>
-                    <p style={{ fontSize: 24, fontWeight: 800, color: "#fff" }}>{s.value}</p>
-                    <p style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700, letterSpacing: "0.8px", marginTop: 2 }}>{s.label}</p>
+                    <p className="text-2xl font-extrabold text-white">{s.value}</p>
+                    <p className="text-[10px] text-zinc-500 font-semibold tracking-widest mt-1">{s.label}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <p style={{ fontSize: 12, color: "#3d5168", position: "relative" }}>Powered by Greenfield University</p>
+            <p className="text-xs text-zinc-700 relative z-10">Powered by Greenfield University</p>
           </div>
 
-          {/* RIGHT PANEL — light */}
-          <div style={{
-            width: "min(520px, 100%)", flexShrink: 0,
-            background: "#eef2f7",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "40px 24px", boxSizing: "border-box",
-          }}>
-            {/* Card */}
-            <div style={{
-              width: "100%", maxWidth: 380,
-              background: "#fff",
-              border: "1px solid #dde3ec",
-              borderRadius: 14,
-              padding: "36px 28px",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
-              boxSizing: "border-box",
-            }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.4px" }}>Sign in</h2>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Enter your credentials to continue</p>
+          {/* RIGHT FORM PANEL */}
+          <div className="flex-1 md:flex-none md:w-[480px] flex items-center justify-center px-6 py-12 bg-zinc-50">
+            <div className="w-full max-w-sm">
+              {/* Mobile logo */}
+              <div className="flex items-center gap-2 mb-8 md:hidden">
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-sm">📚</div>
+                <span className="text-lg font-bold text-zinc-900">Instant Library</span>
+              </div>
 
-              <form onSubmit={login} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {/* Email */}
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Email</label>
-                  <div style={{ position: "relative" }}>
-                    <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 13, pointerEvents: "none" }}>✉</span>
-                    <input
-                      type="email" placeholder="you@greenfield.edu"
-                      value={email} onChange={e => setEmail(e.target.value)} required
-                      style={lightInput}
-                      onFocus={e => { e.target.style.borderColor = "#f59e0b"; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.14)"; }}
-                      onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-                    />
-                  </div>
-                </div>
+              <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8">
+                <h2 className="text-xl font-extrabold text-zinc-900 mb-1 tracking-tight">Sign in</h2>
+                <p className="text-sm text-zinc-500 mb-7">Enter your credentials to continue</p>
 
-                {/* Password */}
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
-                  <div style={{ position: "relative" }}>
-                    <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 13, pointerEvents: "none" }}>🔒</span>
-                    <input
-                      type="password" placeholder="••••••••"
-                      value={password} onChange={e => setPassword(e.target.value)} required
-                      style={lightInput}
-                      onFocus={e => { e.target.style.borderColor = "#f59e0b"; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.14)"; }}
-                      onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-                    />
-                  </div>
-                </div>
+                <form onSubmit={login} className="flex flex-col gap-4">
+                  {/* Email */}
+                  <FormInput
+                    label="Email"
+                    type="email"
+                    placeholder="you@greenfield.edu"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    icon="✉"
+                  />
 
-                {/* Error */}
-                {error && (
-                  <div style={{ padding: "9px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#dc2626", fontSize: 13 }}>
-                    ⚠ {error}
-                  </div>
-                )}
+                  {/* Password */}
+                  <FormInput
+                    label="Password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    icon="🔒"
+                  />
 
-                {/* Sign In button — dark navy */}
-                <button
-                  type="submit" disabled={authLoading}
-                  style={{
-                    width: "100%", padding: "12px", marginTop: 4,
-                    background: authLoading ? "#334155" : "#0f172a",
-                    color: "#fff", border: "none", borderRadius: 8,
-                    fontSize: 15, fontWeight: 700, fontFamily: "Inter, sans-serif",
-                    cursor: authLoading ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    transition: "background 0.2s", boxSizing: "border-box",
-                  }}
-                  onMouseEnter={e => { if (!authLoading) e.currentTarget.style.background = "#1e293b"; }}
-                  onMouseLeave={e => { if (!authLoading) e.currentTarget.style.background = "#0f172a"; }}
-                >
-                  {authLoading ? <Spinner size={18} /> : "Sign In →"}
-                </button>
-              </form>
+                  {/* Error */}
+                  {error && (
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      <span>⚠</span> {error}
+                    </div>
+                  )}
 
-              <p style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#94a3b8" }}>
-                Don't have an account?{" "}
-                <span style={{ color: "#0f172a", fontWeight: 600, cursor: "pointer" }}>Contact your admin</span>
-              </p>
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="mt-1 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
+                      hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2 transition-colors duration-150"
+                  >
+                    {authLoading ? <Spinner size={18} /> : "Sign In →"}
+                  </button>
+                </form>
+
+                <p className="mt-6 text-center text-xs text-zinc-400">
+                  Don&apos;t have an account?{" "}
+                  <span className="text-zinc-700 font-semibold cursor-pointer hover:underline">Contact your admin</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -313,220 +286,275 @@ export default function App() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // DASHBOARD — dark navy + amber theme
+  // DASHBOARD
   // ═══════════════════════════════════════════════════════════════════════════
+  const pageTitle = {
+    library: "Library Collection",
+    requests: user.role === "admin" ? "Book Requests" : "My Requests",
+    manage: "Manage Books",
+  }[activeView] || "Dashboard";
+
   return (
     <>
       <ToastContainer toasts={toasts} />
 
-      {/* ── Sticky Navbar ── */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 100,
-        background: "rgba(6,13,26,0.9)",
-        backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        padding: "0 32px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        height: 64,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 9,
-            background: "linear-gradient(135deg, #f59e0b, #d97706)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, boxShadow: "0 2px 10px rgba(245,158,11,0.3)",
-          }}>📚</div>
-          <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Instant Library</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* User pill */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "4px 14px 4px 5px",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 99,
-          }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: "50%",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 800, fontSize: 12, color: "#0b1220",
-            }}>
-              {user.name?.charAt(0).toUpperCase()}
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0" }}>{user.name}</span>
-            <span className="badge badge-role" style={{ textTransform: "capitalize" }}>{user.role}</span>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        >
+          <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+            <Sidebar
+              user={user}
+              activeView={activeView}
+              setActiveView={v => { setActiveView(v); setSidebarOpen(false); }}
+              onLogout={logout}
+            />
           </div>
-          <button className="btn-ghost" onClick={logout}>Logout</button>
         </div>
-      </header>
+      )}
 
-      {/* ── Page Body ── */}
-      <main style={{ maxWidth: 1300, margin: "0 auto", padding: "36px 32px" }}>
+      <div className="page-shell">
+        {/* Desktop sidebar */}
+        <Sidebar
+          user={user}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onLogout={logout}
+        />
 
-        {/* ──────────────────────── STUDENT VIEW ──────────────────────────── */}
-        {user.role === "student" && (
-          <>
-            {/* Header */}
-            <div style={{ marginBottom: 28 }}>
-              <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px", color: "#f8fafc" }}>
-                Available Books
-              </h2>
-              <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
-                Browse, filter and request books from the library
-              </p>
-            </div>
+        {/* Main content */}
+        <div className="page-content">
+          <Navbar
+            user={user}
+            title={pageTitle}
+            onLogout={logout}
+            onMenuOpen={() => setSidebarOpen(true)}
+          />
 
-            <FilterBar filters={filters} setFilters={setFilters} onSearch={fetchBooks} isLoading={booksLoading} />
+          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
 
-            {/* Book grid */}
-            {booksLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
-                <div style={{ textAlign: "center", color: "#64748b" }}>
-                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-                    <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-                  </div>
-                  <p style={{ fontSize: 14 }}>Loading books…</p>
+            {/* ─── STUDENT: Library ─── */}
+            {user.role === "student" && activeView === "library" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Available Books</h2>
+                  <p className="text-sm text-zinc-500 mt-1">Browse, filter and request books from the library</p>
                 </div>
-              </div>
-            ) : books.length === 0 ? (
-              <div className="empty-state">
-                <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>No books found</p>
-                <p style={{ fontSize: 13 }}>Try adjusting your search filters</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-                {books.map(book => <BookCard key={book.id} book={book} onRequest={requestBook} />)}
-              </div>
-            )}
 
-            {/* My Requests */}
-            <section style={{ marginTop: 56 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 20, color: "#f8fafc" }}>My Requests</h2>
-              {requests.length === 0 ? (
-                <div className="empty-state" style={{ padding: "36px 20px" }}>
-                  <div style={{ fontSize: 30, marginBottom: 10 }}>📋</div>
-                  <p style={{ fontSize: 14, color: "#64748b" }}>You haven't requested any books yet.</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {requests.map(r => (
-                    <div key={r.id} className="glass" style={{
-                      padding: "14px 20px",
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
-                    }}>
-                      <div>
-                        <p style={{ fontSize: 11, color: "#475569", marginBottom: 3 }}>Book ID</p>
-                        <p style={{ fontSize: 13, fontFamily: "monospace", color: "#cbd5e1" }}>{r.bookId}</p>
-                      </div>
-                      <span className={`badge badge-${r.status}`}>
-                        {r.status === "approved" ? "✓" : r.status === "rejected" ? "✕" : "⏳"} {r.status}
-                      </span>
+                <FilterBar filters={filters} setFilters={setFilters} onSearch={fetchBooks} isLoading={booksLoading} />
+
+                {booksLoading ? (
+                  <div className="flex justify-center py-20">
+                    <div className="text-center text-zinc-400">
+                      <Spinner size={36} />
+                      <p className="text-sm mt-4">Loading books…</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-
-        {/* ──────────────────────── ADMIN VIEW ──────────────────────────────── */}
-        {user.role === "admin" && (
-          <>
-            {/* Header */}
-            <div style={{ marginBottom: 32 }}>
-              <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px", color: "#f8fafc" }}>Admin Panel</h2>
-              <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
-                Manage the library catalogue and approve student requests
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
-
-              {/* ── Add Book Form ── */}
-              <div className="glass" style={{ padding: 28 }}>
-                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20, color: "#f8fafc" }}>➕ Add New Book</h3>
-                <form onSubmit={addBook} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {[
-                    { placeholder: "Book title *", value: title, setter: setTitle, req: true },
-                    { placeholder: "Authors (comma separated)", value: authors, setter: setAuthors },
-                    { placeholder: "Subjects (comma separated)", value: subjects, setter: setSubjects },
-                    { placeholder: "ISBN", value: isbn, setter: setIsbn },
-                  ].map((f, i) => (
-                    <input key={i} className="input-simple" type="text"
-                      placeholder={f.placeholder} value={f.value}
-                      onChange={e => f.setter(e.target.value)} required={f.req} />
-                  ))}
-
-                  <input className="input-simple" type="number"
-                    placeholder="Number of copies" value={copies} min="1"
-                    onChange={e => setCopies(e.target.value)} />
-
-                  <FileUpload
-                    label="Cover Image" accept="image/*"
-                    apiBaseUrl={API} token={localStorage.getItem("token")}
-                    onUploadComplete={url => setCoverImageUrl(url)}
-                    onUploadStateChange={v => setIsUploadingCover(v)}
-                  />
-                  <FileUpload
-                    label="PDF / eBook" accept="application/pdf"
-                    apiBaseUrl={API} token={localStorage.getItem("token")}
-                    onUploadComplete={url => setPdfUrl(url)}
-                    onUploadStateChange={v => setIsUploadingPdf(v)}
-                  />
-
-                  <button
-                    className="btn-amber"
-                    style={{ width: "100%", marginTop: 8, padding: 13 }}
-                    disabled={isUploadingCover || isUploadingPdf || addingBook}
-                  >
-                    {addingBook ? <Spinner size={18} /> : (isUploadingCover || isUploadingPdf) ? "Uploading…" : "Add Book"}
-                  </button>
-                </form>
-              </div>
-
-              {/* ── Requests Panel ── */}
-              <div className="glass" style={{ padding: 28 }}>
-                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20, color: "#f8fafc" }}>📋 Book Requests</h3>
-                {requests.length === 0 ? (
-                  <div className="empty-state" style={{ padding: "40px 20px" }}>
-                    <div style={{ fontSize: 30, marginBottom: 10 }}>🎉</div>
-                    <p style={{ color: "#64748b", fontSize: 13 }}>No pending requests</p>
+                  </div>
+                ) : books.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="text-4xl mb-3">📭</div>
+                    <p className="text-base font-semibold text-zinc-500 mb-1">No books found</p>
+                    <p className="text-sm text-zinc-400">Try adjusting your search filters</p>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div className="book-grid">
+                    {books.map(book => <BookCard key={book.id} book={book} onRequest={requestBook} />)}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─── STUDENT: My Requests ─── */}
+            {user.role === "student" && activeView === "requests" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">My Requests</h2>
+                  <p className="text-sm text-zinc-500 mt-1">Track the status of your borrow requests</p>
+                </div>
+
+                {requests.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="text-3xl mb-3">📋</div>
+                    <p className="text-sm text-zinc-500">You haven&apos;t requested any books yet.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 max-w-2xl">
                     {requests.map(r => (
-                      <div key={r.id} style={{
-                        padding: "14px 16px",
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        borderRadius: 12,
-                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                      }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>Student request</p>
-                          <p style={{
-                            fontSize: 12, fontFamily: "monospace", color: "#94a3b8",
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180,
-                          }}>{r.id}</p>
-                          <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                            Book: <span style={{ color: "#e2e8f0" }}>{r.bookId}</span>
+                      <div key={r.id} className="card flex items-center justify-between gap-4 px-5 py-4">
+                        <div>
+                          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Book ID</p>
+                          <p className="text-sm font-mono text-zinc-700">{r.bookId}</p>
+                        </div>
+                        <StatusBadge status={r.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─── ADMIN: Manage Books ─── */}
+            {user.role === "admin" && activeView === "manage" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Manage Books</h2>
+                  <p className="text-sm text-zinc-500 mt-1">Add new books to the library catalogue</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* Add Book Form */}
+                  <div className="card p-6">
+                    <div className="flex items-center gap-2 mb-5">
+                      <span className="text-base">➕</span>
+                      <h3 className="text-base font-bold text-zinc-900">Add New Book</h3>
+                    </div>
+
+                    <form onSubmit={addBook} className="flex flex-col gap-4">
+                      <FormInput
+                        label="Book Title *"
+                        placeholder="Enter book title"
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        required
+                        icon="📖"
+                      />
+                      <FormInput
+                        label="Authors"
+                        placeholder="Authors (comma separated)"
+                        value={authors}
+                        onChange={e => setAuthors(e.target.value)}
+                        icon="✍"
+                      />
+                      <FormInput
+                        label="Subjects"
+                        placeholder="Subjects (comma separated)"
+                        value={subjects}
+                        onChange={e => setSubjects(e.target.value)}
+                        icon="🏷"
+                      />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormInput
+                          label="ISBN"
+                          placeholder="ISBN"
+                          value={isbn}
+                          onChange={e => setIsbn(e.target.value)}
+                        />
+                        <FormInput
+                          label="Copies"
+                          type="number"
+                          placeholder="1"
+                          value={copies}
+                          min="1"
+                          onChange={e => setCopies(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <FileUpload
+                          label="Cover Image" accept="image/*"
+                          apiBaseUrl={API} token={localStorage.getItem("token")}
+                          onUploadComplete={url => setCoverImageUrl(url)}
+                          onUploadStateChange={v => setIsUploadingCover(v)}
+                        />
+                        <FileUpload
+                          label="PDF / eBook" accept="application/pdf"
+                          apiBaseUrl={API} token={localStorage.getItem("token")}
+                          onUploadComplete={url => setPdfUrl(url)}
+                          onUploadStateChange={v => setIsUploadingPdf(v)}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isUploadingCover || isUploadingPdf || addingBook}
+                        className="mt-2 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
+                          hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
+                          flex items-center justify-center gap-2 transition-colors duration-150"
+                      >
+                        {addingBook
+                          ? <Spinner size={18} />
+                          : (isUploadingCover || isUploadingPdf)
+                            ? "Uploading…"
+                            : "Add Book"}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Book list preview */}
+                  <div className="card p-6">
+                    <div className="flex items-center gap-2 mb-5">
+                      <span className="text-base">📚</span>
+                      <h3 className="text-base font-bold text-zinc-900">Catalogue Preview</h3>
+                    </div>
+
+                    {books.length === 0 ? (
+                      <div className="empty-state" style={{ padding: "32px 20px" }}>
+                        <div className="text-3xl mb-3">📭</div>
+                        <p className="text-sm text-zinc-400">No books in catalogue yet</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 max-h-[480px] overflow-y-auto pr-1">
+                        {books.map(book => (
+                          <div key={book.id} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
+                            <div className="w-10 h-12 rounded-lg bg-zinc-100 overflow-hidden flex-shrink-0">
+                              {book.coverUrl
+                                ? <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center text-lg opacity-30">📕</div>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-900 truncate">{book.title}</p>
+                              <p className="text-xs text-zinc-500 truncate">{book.authors?.join(", ") || "Unknown"}</p>
+                            </div>
+                            <StatusBadge status={book.copiesAvailable > 0 ? "available" : "unavailable"}>
+                              {book.copiesAvailable > 0 ? `${book.copiesAvailable} left` : "Out"}
+                            </StatusBadge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ─── ADMIN: Book Requests ─── */}
+            {user.role === "admin" && activeView === "requests" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Book Requests</h2>
+                  <p className="text-sm text-zinc-500 mt-1">Review and approve student borrow requests</p>
+                </div>
+
+                {requests.length === 0 ? (
+                  <div className="empty-state max-w-lg">
+                    <div className="text-4xl mb-3">🎉</div>
+                    <p className="text-base font-semibold text-zinc-500 mb-1">All clear!</p>
+                    <p className="text-sm text-zinc-400">No pending requests at the moment.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 max-w-3xl">
+                    {requests.map(r => (
+                      <div key={r.id} className="card flex items-center justify-between gap-4 px-5 py-4">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Request ID</p>
+                          <p className="text-xs font-mono text-zinc-600 truncate max-w-[220px]">{r.id}</p>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            Book: <span className="font-medium text-zinc-700">{r.bookId}</span>
                           </p>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-                          <span className={`badge badge-${r.status}`}>
-                            {r.status === "approved" ? "✓" : r.status === "rejected" ? "✕" : "⏳"} {r.status}
-                          </span>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <StatusBadge status={r.status} />
                           {r.status === "pending" && (
                             <button
-                              className="btn-outline-amber"
                               onClick={() => approveRequest(r.id)}
-                              style={{ padding: "5px 14px", fontSize: 12 }}
+                              className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-700
+                                hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors duration-150"
                             >
-                              Approve
+                              ✓ Approve
                             </button>
                           )}
                         </div>
@@ -534,69 +562,12 @@ export default function App() {
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
-          </>
-        )}
-      </main>
+              </>
+            )}
+
+          </main>
+        </div>
+      </div>
     </>
-  );
-}
-
-// ─── Book Card ────────────────────────────────────────────────────────────────
-function BookCard({ book, onRequest }) {
-  return (
-    <div className="book-card">
-      {/* Cover */}
-      <div style={{
-        height: 200, overflow: "hidden",
-        background: "linear-gradient(150deg, #0d1f3c, #0b1220)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        position: "relative",
-      }}>
-        {book.coverUrl
-          ? <img src={book.coverUrl} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize: 52, opacity: 0.2 }}>📕</span>
-        }
-        <div style={{ position: "absolute", top: 10, right: 10 }}>
-          <span className={`badge ${book.copiesAvailable > 0 ? "badge-avail" : "badge-unavail"}`} style={{ fontSize: 10 }}>
-            {book.copiesAvailable > 0 ? `${book.copiesAvailable} left` : "Unavailable"}
-          </span>
-        </div>
-      </div>
-
-      {/* Info */}
-      <div style={{ padding: "14px 14px 16px" }}>
-        <h4 style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginBottom: 8, color: "#f8fafc" }}>{book.title}</h4>
-
-        {[
-          { label: "Author", val: book.authors?.join(", ") || "N/A" },
-          { label: "Subject", val: book.subjects?.join(", ") || "N/A" },
-          { label: "ISBN", val: book.isbn || "N/A" },
-        ].map(m => (
-          <p key={m.label} style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>
-            <span style={{ color: "#f59e0b", fontWeight: 600 }}>{m.label} </span>{m.val}
-          </p>
-        ))}
-
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <button
-            className="btn-amber"
-            onClick={() => onRequest(book.id)}
-            disabled={book.copiesAvailable === 0}
-            style={{ flex: 1, padding: "8px 10px", fontSize: 12 }}
-          >
-            Request
-          </button>
-          {book.ebookKey && (
-            <a href={book.ebookKey} target="_blank" rel="noopener noreferrer"
-              className="btn-outline-amber"
-              style={{ flex: 1, padding: "8px 10px", fontSize: 12 }}>
-              📄 PDF
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

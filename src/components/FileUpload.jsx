@@ -1,4 +1,4 @@
-// FileUpload – dark navy + amber SaaS theme
+// FileUpload – light Figma-matched theme, preserves all S3 upload logic
 import { useState, useRef } from 'react';
 
 export default function FileUpload({ label, accept, onUploadComplete, onUploadStateChange, apiBaseUrl, token }) {
@@ -66,21 +66,16 @@ export default function FileUpload({ label, accept, onUploadComplete, onUploadSt
     const isSuccess = uploadProgress === 100 && !isUploading && uploadedName;
 
     return (
-        <div style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 12, padding: "14px 16px",
-            display: "flex", flexDirection: "column", gap: 10
-        }}>
-            {/* Header row */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>
-                    {isImage ? "🖼" : "📄"} {label}
+        <div className="border border-zinc-200 rounded-xl p-3.5 bg-white flex flex-col gap-3">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold text-zinc-600">
+                    {isImage ? '🖼' : '📄'} {label}
                 </span>
                 {selectedFile && !isUploading && (
                     <button
                         type="button" onClick={reset}
-                        style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
                     >
                         Clear
                     </button>
@@ -88,37 +83,36 @@ export default function FileUpload({ label, accept, onUploadComplete, onUploadSt
             </div>
 
             {/* Drop zone */}
-            <label className={`upload-zone ${isUploading ? "uploading" : ""} ${isSuccess ? "success" : ""}`}
-                style={{ cursor: isUploading ? "not-allowed" : "pointer" }}>
+            <label className={`upload-zone ${isUploading ? 'uploading' : ''} ${isSuccess ? 'success' : ''}`}
+                style={{ cursor: isUploading ? 'not-allowed' : 'pointer' }}>
                 <input
                     type="file" accept={accept}
                     onChange={handleFileSelect} ref={fileInputRef}
                     disabled={isUploading}
-                    style={{ display: "none" }}
+                    className="hidden"
                 />
 
-                {/* Image preview */}
                 {previewUrl && (
                     <img src={previewUrl} alt="Preview"
-                        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, margin: "0 auto 8px" }} />
+                        className="w-16 h-16 object-cover rounded-lg mx-auto mb-2" />
                 )}
 
                 {isSuccess ? (
                     <>
-                        <p style={{ fontSize: 20, marginBottom: 4 }}>✅</p>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: "#34d399" }}>{uploadedName}</p>
-                        <p style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Uploaded successfully</p>
+                        <p className="text-xl mb-1">✅</p>
+                        <p className="text-xs font-semibold text-green-700 truncate max-w-[160px] mx-auto">{uploadedName}</p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">Uploaded successfully</p>
                     </>
                 ) : isUploading ? (
                     <>
-                        <div style={{ width: 24, height: 24, border: "2px solid rgba(245,158,11,0.2)", borderTopColor: "#f59e0b", borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 8px" }} />
-                        <p style={{ fontSize: 12, color: "#f59e0b" }}>Uploading… {uploadProgress}%</p>
+                        <div className="spinner w-6 h-6 mx-auto mb-2" />
+                        <p className="text-xs text-zinc-600">Uploading… {uploadProgress}%</p>
                     </>
                 ) : (
                     <>
-                        <p style={{ fontSize: 24, marginBottom: 6, opacity: 0.3 }}>{isImage ? "🖼" : "📄"}</p>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Click to browse</p>
-                        <p style={{ fontSize: 10, color: "#334155", marginTop: 3 }}>{accept}</p>
+                        <p className="text-2xl mb-1.5 opacity-30">{isImage ? '🖼' : '📄'}</p>
+                        <p className="text-xs font-semibold text-zinc-500">Click to browse</p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">{accept}</p>
                     </>
                 )}
             </label>
@@ -132,13 +126,9 @@ export default function FileUpload({ label, accept, onUploadComplete, onUploadSt
 
             {/* Error */}
             {error && (
-                <p style={{
-                    fontSize: 12, color: "#f87171",
-                    padding: "6px 10px",
-                    background: "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    borderRadius: 8
-                }}>⚠ {error}</p>
+                <p className="text-xs text-red-600 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
+                    ⚠ {error}
+                </p>
             )}
         </div>
     );
