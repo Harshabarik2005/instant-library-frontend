@@ -1,16 +1,37 @@
 // BookCard – standalone card component matching the Figma library design
+// Uses presigned URLs for cover images and PDF downloads from private S3
 import StatusBadge from './StatusBadge';
+import usePresignedUrl, { extractS3Key } from '../hooks/usePresignedUrl';
+
+const API = `${import.meta.env.VITE_API_URL}/api`;
 
 export default function BookCard({ book, onRequest }) {
     const available = book.copiesAvailable > 0;
+    const coverSrc = usePresignedUrl(book.coverUrl);
+
+    // Handler to open PDF via presigned URL
+    const handleOpenPdf = async (e) => {
+        e.preventDefault();
+        const key = extractS3Key(book.ebookKey);
+        if (!key) return;
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API}/download-url?key=${encodeURIComponent(key)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.downloadUrl) window.open(data.downloadUrl, '_blank');
+        } catch { /* silently fail */ }
+    };
 
     return (
         <div className="group bg-white rounded-xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col w-[220px] flex-shrink-0">
             {/* Cover image */}
             <div className="relative h-48 bg-zinc-100 overflow-hidden flex-shrink-0">
-                {book.coverUrl ? (
+                {coverSrc ? (
                     <img
-                        src={book.coverUrl}
+                        src={coverSrc}
                         alt={book.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -60,15 +81,13 @@ export default function BookCard({ book, onRequest }) {
                         Request
                     </button>
                     {book.ebookKey && (
-                        <a
-                            href={book.ebookKey}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            onClick={handleOpenPdf}
                             className="flex-1 py-1.5 rounded-lg border border-zinc-200 text-zinc-700 text-xs font-semibold text-center
-                hover:bg-zinc-50 transition-colors duration-150"
+                hover:bg-zinc-50 transition-colors duration-150 cursor-pointer"
                         >
                             📄 PDF
-                        </a>
+                        </button>
                     )}
                 </div>
             </div>

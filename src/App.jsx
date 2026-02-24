@@ -6,6 +6,7 @@ import StatusBadge from "./components/StatusBadge";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import FormInput from "./components/FormInput";
+import S3Thumbnail from "./components/S3Thumbnail";
 
 const API = `${import.meta.env.VITE_API_URL}/api`;
 
@@ -500,10 +501,7 @@ export default function App() {
                         {books.map(book => (
                           <div key={book.id} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-colors">
                             <div className="w-10 h-12 rounded-lg bg-zinc-100 overflow-hidden flex-shrink-0">
-                              {book.coverUrl
-                                ? <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
-                                : <div className="w-full h-full flex items-center justify-center text-lg opacity-30">📕</div>
-                              }
+                              <S3Thumbnail s3Url={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-zinc-900 truncate">{book.title}</p>
