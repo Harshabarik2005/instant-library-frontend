@@ -279,7 +279,7 @@ export default function App() {
             />
             <div className="flex items-center gap-3 relative z-10">
               <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-lg">📚</div>
-              <span className="text-lg font-bold text-white">Instant Library</span>
+              <span className="text-lg font-bold text-white">Greenfield Library</span>
             </div>
             <div className="relative z-10">
               <h1 className="text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
@@ -307,7 +307,7 @@ export default function App() {
               {/* Mobile logo */}
               <div className="flex items-center gap-2 mb-6 md:hidden">
                 <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-sm">📚</div>
-                <span className="text-lg font-bold text-zinc-900">Instant Library</span>
+                <span className="text-lg font-bold text-zinc-900">Greenfield Library</span>
               </div>
 
               <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-7">

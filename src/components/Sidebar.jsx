@@ -9,8 +9,8 @@ function NavItem({ icon, label, active, onClick }) {
         <button
             onClick={onClick}
             className={`${navItemBase} w-full text-left ${active
-                    ? 'bg-zinc-900 text-white shadow-sm'
-                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                ? 'bg-zinc-900 text-white shadow-sm'
+                : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
                 }`}
         >
             <span className="text-base leading-none">{icon}</span>
@@ -42,7 +42,7 @@ export default function Sidebar({ user, activeView, setActiveView, onLogout }) {
                     📚
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-zinc-900 leading-tight">Instant Library</p>
+                    <p className="text-sm font-bold text-zinc-900 leading-tight">Greenfield Library</p>
                     <p className="text-[10px] text-zinc-400 leading-tight">Greenfield University</p>
                 </div>
             </div>
