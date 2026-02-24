@@ -100,7 +100,7 @@ export default function FilterBar({ filters, setFilters, onSearch, isLoading }) 
                         Reset
                     </button>
                     <button
-                        onClick={onSearch}
+                        onClick={() => onSearch()}
                         disabled={isLoading}
                         className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-semibold
               hover:bg-zinc-700 disabled:opacity-40 transition-colors duration-150"
