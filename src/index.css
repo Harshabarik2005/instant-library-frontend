@@ -194,8 +194,8 @@
 
     /* ── Book grid ─────────────────────────────────────────────── */
     .book-grid {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 20px;
     }
 }
@@ -222,6 +222,24 @@
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
     .book-grid {
-        justify-content: center;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+    }
+
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+@media (max-width: 400px) {
+    .book-grid {
+        grid-template-columns: 1fr;
     }
 }

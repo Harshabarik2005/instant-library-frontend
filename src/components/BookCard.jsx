@@ -26,7 +26,7 @@ export default function BookCard({ book, onRequest }) {
     };
 
     return (
-        <div className="group bg-white rounded-xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col w-[220px] flex-shrink-0">
+        <div className="group bg-white rounded-xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col w-full">
             {/* Cover image */}
             <div className="relative h-48 bg-zinc-100 overflow-hidden flex-shrink-0">
                 {coverSrc ? (
