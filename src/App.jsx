@@ -650,6 +650,9 @@ export default function App() {
                     <div className="flex items-center gap-2 mb-5">
                       <span className="text-base">📚</span>
                       <h3 className="text-base font-bold text-zinc-900">Catalogue Preview</h3>
+                      <span className="ml-auto text-xs font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">
+                        {books.length} {books.length === 1 ? "book" : "books"}
+                      </span>
                     </div>
 
                     {books.length === 0 ? (
