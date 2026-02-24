@@ -238,6 +238,19 @@ export default function App() {
     } catch { addToast("Failed to delete book — server unreachable.", "error"); }
   }
 
+  async function handleClearRequests() {
+    if (!confirm("Are you sure you want to delete ALL requests? This cannot be undone.")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`${API}/admin/requests/clear`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      addToast("All requests cleared.", "success");
+      fetchRequests();
+    } catch { addToast("Failed to clear requests.", "error"); }
+  }
+
   async function addBook(e) {
     e.preventDefault(); setAddingBook(true);
     const token = localStorage.getItem("token");
@@ -702,9 +715,20 @@ export default function App() {
             {/* ─── ADMIN: Book Requests ─── */}
             {user.role === "admin" && activeView === "requests" && (
               <>
-                <div className="mb-6">
-                  <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Book Requests</h2>
-                  <p className="text-sm text-zinc-500 mt-1">Review and approve student borrow requests</p>
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Book Requests</h2>
+                    <p className="text-sm text-zinc-500 mt-1">Review and approve student borrow requests</p>
+                  </div>
+                  {requests.length > 0 && (
+                    <button
+                      onClick={handleClearRequests}
+                      className="px-4 py-2 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-semibold
+                        hover:bg-red-100 transition-colors duration-150 flex items-center gap-2 max-w-fit"
+                    >
+                      <span>🗑️</span> Clear Logs
+                    </button>
+                  )}
                 </div>
 
                 {requests.length === 0 ? (
