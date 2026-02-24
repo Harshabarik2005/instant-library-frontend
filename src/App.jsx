@@ -83,6 +83,22 @@ export default function App() {
 
   const { toasts, addToast } = useToast();
 
+  // ── Restore session on page load ───────────────────────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+    if (token && savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        setActiveView(parsed.role === "admin" ? "manage" : "library");
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
+
   useEffect(() => { if (user) { fetchBooks(); fetchRequests(); } }, [user]);
 
   // Clear form when switching login modes
@@ -117,6 +133,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Invalid credentials"); return; }
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
       setActiveView(data.user.role === "admin" ? "manage" : "library");
       addToast(`Welcome back, ${data.user.name}!`, "success");
@@ -144,6 +161,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Registration failed"); return; }
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
       setActiveView("library");
       addToast(`Welcome, ${data.user.name}! Your account is ready.`, "success");
@@ -153,6 +171,7 @@ export default function App() {
 
   function logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null); setBooks([]); setRequests([]);
     addToast("Logged out.", "info");
   }
@@ -286,8 +305,8 @@ export default function App() {
                       key={tab.id}
                       onClick={() => switchMode(tab.id)}
                       className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${loginMode === tab.id
-                          ? "bg-white text-zinc-900 shadow-sm"
-                          : "text-zinc-500 hover:text-zinc-700"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700"
                         }`}
                     >
                       {tab.label}
