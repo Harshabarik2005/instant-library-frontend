@@ -476,6 +476,7 @@ export default function App() {
               activeView={activeView}
               setActiveView={v => { setActiveView(v); setSidebarOpen(false); }}
               onLogout={logout}
+              mobile
             />
           </div>
         </div>

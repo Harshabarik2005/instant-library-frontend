@@ -19,7 +19,7 @@ function NavItem({ icon, label, active, onClick }) {
     );
 }
 
-export default function Sidebar({ user, activeView, setActiveView, onLogout }) {
+export default function Sidebar({ user, activeView, setActiveView, onLogout, mobile }) {
     const isAdmin = user?.role === 'admin';
 
     const studentNav = [
@@ -35,7 +35,7 @@ export default function Sidebar({ user, activeView, setActiveView, onLogout }) {
     const navItems = isAdmin ? adminNav : studentNav;
 
     return (
-        <aside className="hidden md:flex flex-col w-60 flex-shrink-0 bg-white border-r border-zinc-200 h-screen sticky top-0 overflow-y-auto">
+        <aside className={`${mobile ? 'flex' : 'hidden md:flex'} flex-col w-60 flex-shrink-0 bg-white border-r border-zinc-200 h-screen sticky top-0 overflow-y-auto`}>
             {/* Logo */}
             <div className="flex items-center gap-2.5 px-5 py-5 border-b border-zinc-100">
                 <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-white text-sm font-bold shadow-sm">
