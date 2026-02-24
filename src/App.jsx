@@ -221,6 +221,17 @@ export default function App() {
     } catch { addToast("Failed to approve.", "error"); }
   }
 
+  async function handleDeleteBook(bookId, bookTitle) {
+    if (!confirm(`Delete "${bookTitle}"? This cannot be undone.`)) return;
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`${API}/admin/books/${bookId}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
+      });
+      addToast(`"${bookTitle}" removed.`, "success"); fetchBooks();
+    } catch { addToast("Failed to delete book.", "error"); }
+  }
+
   async function addBook(e) {
     e.preventDefault(); setAddingBook(true);
     const token = localStorage.getItem("token");
@@ -532,9 +543,11 @@ export default function App() {
                   <div className="flex flex-col gap-3 max-w-2xl">
                     {requests.map(r => (
                       <div key={r.id} className="card flex items-center justify-between gap-4 px-5 py-4">
-                        <div>
-                          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Book ID</p>
-                          <p className="text-sm font-mono text-zinc-700">{r.bookId}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-zinc-900 truncate">{r.bookTitle || r.bookId}</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            Requested {new Date(r.requestedAt).toLocaleDateString()}
+                          </p>
                         </div>
                         <StatusBadge status={r.status} />
                       </div>
@@ -655,9 +668,18 @@ export default function App() {
                               <p className="text-sm font-semibold text-zinc-900 truncate">{book.title}</p>
                               <p className="text-xs text-zinc-500 truncate">{book.authors?.join(", ") || "Unknown"}</p>
                             </div>
-                            <StatusBadge status={book.copiesAvailable > 0 ? "available" : "unavailable"}>
-                              {book.copiesAvailable > 0 ? `${book.copiesAvailable} left` : "Out"}
-                            </StatusBadge>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <StatusBadge status={book.copiesAvailable > 0 ? "available" : "unavailable"}>
+                                {book.copiesAvailable > 0 ? `${book.copiesAvailable} left` : "Out"}
+                              </StatusBadge>
+                              <button
+                                onClick={() => handleDeleteBook(book.id, book.title)}
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors duration-150"
+                                title="Delete this book"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -686,10 +708,12 @@ export default function App() {
                     {requests.map(r => (
                       <div key={r.id} className="card flex items-center justify-between gap-4 px-5 py-4">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Request ID</p>
-                          <p className="text-xs font-mono text-zinc-600 truncate max-w-[220px]">{r.id}</p>
-                          <p className="text-xs text-zinc-500 mt-1">
-                            Book: <span className="font-medium text-zinc-700">{r.bookId}</span>
+                          <p className="text-sm font-semibold text-zinc-900 truncate">{r.bookTitle || r.bookId}</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            By: <span className="font-medium text-zinc-700">{r.userName || r.userId}</span>
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            {new Date(r.requestedAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
