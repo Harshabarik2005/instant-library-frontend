@@ -51,6 +51,12 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /* Registration extras */
+  const [regName, setRegName] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [loginMode, setLoginMode] = useState("student"); // "student" | "admin" | "register"
+
   /* Books */
   const [books, setBooks] = useState([]);
   const [booksLoading, setBooksLoading] = useState(false);
@@ -79,13 +85,34 @@ export default function App() {
 
   useEffect(() => { if (user) { fetchBooks(); fetchRequests(); } }, [user]);
 
+  // Clear form when switching login modes
+  function switchMode(mode) {
+    setLoginMode(mode);
+    setError("");
+    setEmail("");
+    setPassword("");
+    setConfirmPw("");
+    setRegName("");
+    setRegPhone("");
+  }
+
+  // ── Password policy helpers ───────────────────────────────────────────────
+  const pwChecks = [
+    { label: "At least 8 characters", ok: password.length >= 8 },
+    { label: "One uppercase letter (A-Z)", ok: /[A-Z]/.test(password) },
+    { label: "One lowercase letter (a-z)", ok: /[a-z]/.test(password) },
+    { label: "One number (0-9)", ok: /\d/.test(password) },
+    { label: "One special character (!@#...)", ok: /[!@#$%^&*()_\-+={}[\]:;"'<>,.?/\\|`~]/.test(password) },
+  ];
+  const pwAllPass = pwChecks.every(c => c.ok);
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   async function login(e) {
     e.preventDefault(); setError(""); setAuthLoading(true);
     try {
       const res = await fetch(`${API}/auth/login`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role: loginMode === "admin" ? "admin" : "student" }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Invalid credentials"); return; }
@@ -93,6 +120,33 @@ export default function App() {
       setUser(data.user);
       setActiveView(data.user.role === "admin" ? "manage" : "library");
       addToast(`Welcome back, ${data.user.name}!`, "success");
+    } catch { setError("Could not reach the server."); }
+    finally { setAuthLoading(false); }
+  }
+
+  async function register(e) {
+    e.preventDefault(); setError(""); setAuthLoading(true);
+    // Client-side validations
+    if (!email.toLowerCase().endsWith("@greenfield.edu")) {
+      setError("Email must end with @greenfield.edu"); setAuthLoading(false); return;
+    }
+    if (!pwAllPass) {
+      setError("Password does not meet all requirements"); setAuthLoading(false); return;
+    }
+    if (password !== confirmPw) {
+      setError("Passwords do not match"); setAuthLoading(false); return;
+    }
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: regName, email, password, phone: regPhone || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Registration failed"); return; }
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      setActiveView("library");
+      addToast(`Welcome, ${data.user.name}! Your account is ready.`, "success");
     } catch { setError("Could not reach the server."); }
     finally { setAuthLoading(false); }
   }
@@ -174,7 +228,7 @@ export default function App() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN PAGE
+  // LOGIN / REGISTER PAGE
   // ═══════════════════════════════════════════════════════════════════════════
   if (!user) {
     return (
@@ -184,20 +238,13 @@ export default function App() {
 
           {/* LEFT BRAND PANEL */}
           <div className="hidden md:flex flex-col flex-1 relative bg-zinc-900 p-12 overflow-hidden justify-between">
-            {/* Subtle dot pattern */}
             <div className="absolute inset-0 opacity-[0.03]"
               style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }}
             />
-
-            {/* Logo */}
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-lg">
-                📚
-              </div>
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-lg">📚</div>
               <span className="text-lg font-bold text-white">Instant Library</span>
             </div>
-
-            {/* Hero text */}
             <div className="relative z-10">
               <h1 className="text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
                 Search.<br />Borrow.<br />
@@ -215,69 +262,151 @@ export default function App() {
                 ))}
               </div>
             </div>
-
             <p className="text-xs text-zinc-700 relative z-10">Powered by Greenfield University</p>
           </div>
 
           {/* RIGHT FORM PANEL */}
-          <div className="flex-1 md:flex-none md:w-[480px] flex items-center justify-center px-6 py-12 bg-zinc-50">
+          <div className="flex-1 md:flex-none md:w-[520px] flex items-center justify-center px-6 py-8 bg-zinc-50 overflow-y-auto">
             <div className="w-full max-w-sm">
               {/* Mobile logo */}
-              <div className="flex items-center gap-2 mb-8 md:hidden">
+              <div className="flex items-center gap-2 mb-6 md:hidden">
                 <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-sm">📚</div>
                 <span className="text-lg font-bold text-zinc-900">Instant Library</span>
               </div>
 
-              <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8">
-                <h2 className="text-xl font-extrabold text-zinc-900 mb-1 tracking-tight">Sign in</h2>
-                <p className="text-sm text-zinc-500 mb-7">Enter your credentials to continue</p>
+              <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-7">
+                {/* ── Mode Tabs ── */}
+                <div className="flex rounded-xl bg-zinc-100 p-1 mb-6">
+                  {[
+                    { id: "student", label: "🎓 Student" },
+                    { id: "admin", label: "🛡️ Admin" },
+                    { id: "register", label: "✨ Register" },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => switchMode(tab.id)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${loginMode === tab.id
+                          ? "bg-white text-zinc-900 shadow-sm"
+                          : "text-zinc-500 hover:text-zinc-700"
+                        }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-                <form onSubmit={login} className="flex flex-col gap-4">
-                  {/* Email */}
-                  <FormInput
-                    label="Email"
-                    type="email"
-                    placeholder="you@greenfield.edu"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    icon="✉"
-                  />
+                {/* ── STUDENT LOGIN ── */}
+                {loginMode === "student" && (
+                  <>
+                    <h2 className="text-lg font-extrabold text-zinc-900 mb-0.5 tracking-tight">Student Sign In</h2>
+                    <p className="text-sm text-zinc-500 mb-5">Login with your @greenfield.edu email</p>
+                    <form onSubmit={login} className="flex flex-col gap-3.5">
+                      <FormInput label="Email" type="email" placeholder="you@greenfield.edu" value={email}
+                        onChange={e => setEmail(e.target.value)} required icon="✉" />
+                      <FormInput label="Password" type="password" placeholder="••••••••" value={password}
+                        onChange={e => setPassword(e.target.value)} required icon="🔒" />
+                      {error && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                          <span>⚠</span> {error}
+                        </div>
+                      )}
+                      <button type="submit" disabled={authLoading}
+                        className="mt-1 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
+                          hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
+                          flex items-center justify-center gap-2 transition-colors duration-150">
+                        {authLoading ? <Spinner size={18} /> : "Sign In as Student →"}
+                      </button>
+                    </form>
+                    <p className="mt-5 text-center text-xs text-zinc-400">
+                      New student?{" "}
+                      <button onClick={() => switchMode("register")} className="text-zinc-700 font-semibold hover:underline">
+                        Create an account
+                      </button>
+                    </p>
+                  </>
+                )}
 
-                  {/* Password */}
-                  <FormInput
-                    label="Password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    icon="🔒"
-                  />
+                {/* ── ADMIN LOGIN ── */}
+                {loginMode === "admin" && (
+                  <>
+                    <h2 className="text-lg font-extrabold text-zinc-900 mb-0.5 tracking-tight">Admin Sign In</h2>
+                    <p className="text-sm text-zinc-500 mb-5">Access the library administration panel</p>
+                    <form onSubmit={login} className="flex flex-col gap-3.5">
+                      <FormInput label="Admin Email" type="email" placeholder="admin@greenfield.edu" value={email}
+                        onChange={e => setEmail(e.target.value)} required icon="🛡️" />
+                      <FormInput label="Password" type="password" placeholder="••••••••" value={password}
+                        onChange={e => setPassword(e.target.value)} required icon="🔒" />
+                      {error && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                          <span>⚠</span> {error}
+                        </div>
+                      )}
+                      <button type="submit" disabled={authLoading}
+                        className="mt-1 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
+                          hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
+                          flex items-center justify-center gap-2 transition-colors duration-150">
+                        {authLoading ? <Spinner size={18} /> : "Sign In as Admin →"}
+                      </button>
+                    </form>
+                    <p className="mt-5 text-center text-xs text-zinc-400">
+                      Admin accounts are created by the system administrator.
+                    </p>
+                  </>
+                )}
 
-                  {/* Error */}
-                  {error && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                      <span>⚠</span> {error}
-                    </div>
-                  )}
+                {/* ── REGISTER ── */}
+                {loginMode === "register" && (
+                  <>
+                    <h2 className="text-lg font-extrabold text-zinc-900 mb-0.5 tracking-tight">Create Account</h2>
+                    <p className="text-sm text-zinc-500 mb-5">Register as a new student</p>
+                    <form onSubmit={register} className="flex flex-col gap-3.5">
+                      <FormInput label="Full Name *" type="text" placeholder="John Doe" value={regName}
+                        onChange={e => setRegName(e.target.value)} required icon="👤" />
+                      <FormInput label="Email *" type="email" placeholder="you@greenfield.edu" value={email}
+                        onChange={e => setEmail(e.target.value)} required icon="✉" />
+                      <FormInput label="Phone (optional)" type="tel" placeholder="9876543210" value={regPhone}
+                        onChange={e => setRegPhone(e.target.value)} icon="📞" />
+                      <FormInput label="Password *" type="password" placeholder="Min 8 chars, upper, lower, digit, special" value={password}
+                        onChange={e => setPassword(e.target.value)} required icon="🔒" />
 
-                  {/* Submit */}
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="mt-1 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
-                      hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
-                      flex items-center justify-center gap-2 transition-colors duration-150"
-                  >
-                    {authLoading ? <Spinner size={18} /> : "Sign In →"}
-                  </button>
-                </form>
+                      {/* Password policy checklist */}
+                      {password.length > 0 && (
+                        <div className="flex flex-col gap-1 px-1">
+                          {pwChecks.map(c => (
+                            <div key={c.label} className={`flex items-center gap-2 text-xs ${c.ok ? "text-green-600" : "text-zinc-400"}`}>
+                              <span>{c.ok ? "✓" : "○"}</span>
+                              <span>{c.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
-                <p className="mt-6 text-center text-xs text-zinc-400">
-                  Don&apos;t have an account?{" "}
-                  <span className="text-zinc-700 font-semibold cursor-pointer hover:underline">Contact your admin</span>
-                </p>
+                      <FormInput label="Confirm Password *" type="password" placeholder="Re-enter password" value={confirmPw}
+                        onChange={e => setConfirmPw(e.target.value)} required icon="🔒" />
+                      {confirmPw && password !== confirmPw && (
+                        <p className="text-xs text-red-500 px-1">Passwords do not match</p>
+                      )}
+
+                      {error && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                          <span>⚠</span> {error}
+                        </div>
+                      )}
+                      <button type="submit" disabled={authLoading || !pwAllPass || password !== confirmPw}
+                        className="mt-1 w-full py-3 rounded-xl bg-zinc-900 text-white text-sm font-bold
+                          hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed
+                          flex items-center justify-center gap-2 transition-colors duration-150">
+                        {authLoading ? <Spinner size={18} /> : "Create Account →"}
+                      </button>
+                    </form>
+                    <p className="mt-5 text-center text-xs text-zinc-400">
+                      Already have an account?{" "}
+                      <button onClick={() => switchMode("student")} className="text-zinc-700 font-semibold hover:underline">
+                        Sign in
+                      </button>
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
