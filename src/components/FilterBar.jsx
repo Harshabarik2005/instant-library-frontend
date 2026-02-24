@@ -6,9 +6,9 @@ export default function FilterBar({ filters, setFilters, onSearch, isLoading }) 
     };
 
     const clearFilters = () => {
-        setFilters({ search: '', author: '', subject: '', available: false });
-        // Trigger fetch with empty filters on next tick (after state updates)
-        setTimeout(() => onSearch(), 0);
+        const emptyFilters = { search: '', author: '', subject: '', available: false };
+        setFilters(emptyFilters);
+        onSearch(emptyFilters);
     };
 
     return (

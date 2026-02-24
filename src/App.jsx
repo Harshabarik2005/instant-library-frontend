@@ -177,14 +177,15 @@ export default function App() {
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  async function fetchBooks() {
+  async function fetchBooks(overrideFilters) {
     setBooksLoading(true);
+    const activeFilters = overrideFilters || filters;
     try {
       const q = new URLSearchParams();
-      if (filters.search) q.append("search", filters.search);
-      if (filters.author) q.append("author", filters.author);
-      if (filters.subject) q.append("subject", filters.subject);
-      if (filters.available) q.append("available", "true");
+      if (activeFilters.search) q.append("search", activeFilters.search);
+      if (activeFilters.author) q.append("author", activeFilters.author);
+      if (activeFilters.subject) q.append("subject", activeFilters.subject);
+      if (activeFilters.available) q.append("available", "true");
       const res = await fetch(`${API}/books?${q}`);
       const data = await res.json();
       setBooks(data.books || []);
