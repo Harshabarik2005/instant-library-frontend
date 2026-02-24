@@ -217,7 +217,7 @@ export default function App() {
         method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ status: "approved" }),
       });
-      addToast("Request approved.", "success"); fetchRequests();
+      addToast("Request approved.", "success"); fetchRequests(); fetchBooks();
     } catch { addToast("Failed to approve.", "error"); }
   }
 
@@ -225,11 +225,17 @@ export default function App() {
     if (!confirm(`Delete "${bookTitle}"? This cannot be undone.`)) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`${API}/admin/books/${bookId}`, {
+      const res = await fetch(`${API}/admin/books/${bookId}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${token}` },
       });
-      addToast(`"${bookTitle}" removed.`, "success"); fetchBooks();
-    } catch { addToast("Failed to delete book.", "error"); }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        addToast(data.error || `Failed to delete (${res.status})`, "error");
+        return;
+      }
+      addToast(`"${bookTitle}" removed.`, "success");
+      fetchBooks();
+    } catch { addToast("Failed to delete book — server unreachable.", "error"); }
   }
 
   async function addBook(e) {
